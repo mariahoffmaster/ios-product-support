@@ -1,0 +1,185 @@
+=== BADGER KB: LOGIC — CUSTODY AND COLLATERAL ===
+Responsible Department: Investment Operations / Post Closing
+Last Updated: May 2026
+============================================================
+
+OVERVIEW
+--------
+Document custody is the process of electronically shipping closing documents to WSFS Bank
+(the document custodian) for verification and certification. Once certified, assets become
+eligible for trade. Physical custody is a separate flow (pending documentation). The CET
+weekly manifest tracks physical shipments. BSI (Backup Servicer) receives quarterly tapes.
+
+
+KEY PARTIES
+-----------
+- WSFS Bank (custodygroup@wsfsbank.com) — Document custodian. Reviews electronic packages,
+  issues Schedule I (List of Loans) and Schedule II (List of Exceptions).
+- ClearEdge Title (CET) — Primary title company. Sends closing documents and weekly
+  manifest of physical shipments. Contact: PostClosing@cetitle.com (manifest),
+  Travon Dixon (disbursements).
+- BSI Financial (backup servicer) — Receives quarterly backup servicer tapes.
+  Contact: Delone Martin (dmartin@bsifinancial.com), Shamida V Ambre (sambre@bsifinancial.com).
+  SFTP: sftp2.bsifinancial.com, Port 22 (credentials managed by IT).
+
+
+KEY SYSTEMS AND TOOLS
+---------------------
+- Badger — Electronic shipment creation, document custody management.
+  Shipment module creates the UAM folder structure and copies files for WSFS.
+- DBLoader — Batch loader for CET manifest files, WSFS certificate files, and lien alerts.
+  Called via bat files.
+- ReportRunner — Generates WSFS Daily Collateral Shipment Report and sends to WSFS nightly.
+- WinSCP — SFTP client for BSI backup servicer tape delivery.
+- TOAD / SQL Server Management Studio — Database queries; BSI tape requires SSMS for
+  encrypted column decryption.
+
+
+KEY DIRECTORIES
+---------------
+- A:\00 - Operations\Document Custody\Staging — Where Badger stages electronic shipments.
+- A:\00 - Operations\Document Custody\wsfs\Import — Import folder for WSFS certificate files.
+- A:\00 - Operations\Document Custody\wsfs\Import\Archived — Post-load archive.
+- A:\01 - Surveillance\ClearEdge\shipments — CET weekly manifest files.
+- A:\00 - Operations\Backup Servicer Tapes — RESTRICTED. BSI quarterly tapes stored here.
+- A:\00 - Operations\Consumer Docs\ — Assignment of Security templates for LEX 1/2.
+
+
+CUSTODY FLOW — POST CLOSING ORIGINATION
+-----------------------------------------
+Step 1: Post closing receives closing file from CET.
+  CET sends all docs in one PDF. Post closing splits into 3 docs saved to "Closing Docs -
+  Fully Executed":
+    - FORWARD SALE AND EXCHANGE AGREEMENT
+    - PERFORMANCE MORTGAGE
+    - TITLE REPORT
+
+Step 2: Post closing imports asset into Badger.
+  Double-click UAM flaire in Badger → enter asset_id.
+  Launches sp_MAX_Badger_Import_ALL stored procedure.
+  Imports data from API_XXXXX tables into Badger tables.
+  (Has a bit flag to ignore applicant if applicant already exists, e.g., for refinances.)
+
+Step 3: Post closing performs data quality checks (ConsolidatedMissingData check).
+  Post closing manually updates: lien position, original credit score, effective date
+  (initially populated with estimated closing date).
+
+Step 4: Post closing creates electronic shipment in Badger.
+  Adds assets to the shipment.
+  Badger creates directory for that date and copies files to:
+  A:\00 - Operations\Document Custody\Staging
+
+Step 5: End of day — post closing clicks "Send to WSFS".
+  Generates correct folder name in SFTP folder.
+  Copies files to WSFS SFTP site.
+  Generates data tape for WSFS to use for certification.
+
+Step 6: WSFS reviews electronic package and data tape.
+  WSFS sends back:
+    - Schedule I List of Loans
+    - Schedule II List of Exceptions (if any)
+
+Step 7: If exceptions exist, post closing resolves them.
+  Re-upload corrected files directly to SFTP, or update data in Badger and regenerate tape.
+
+
+CERTIFICATION SPLIT FUNDING FLOW
+----------------------------------
+On funding day, Ryan Thrift sends (n) data tapes split by funding source.
+WSFS reviews each data tape and sends three files per funding source:
+    - Schedule I List of Loans
+    - Schedule II List of Exceptions
+    - Certification specific to the funding source (with certification ID appended)
+These certifications confirm WSFS has received and verified the electronic packages,
+making assets eligible for trade.
+
+
+CUSTODY COLLATERAL CERTIFICATE LOADING
+-----------------------------------------
+Trigger: Email from document custodian (WSFS) with subject:
+  "New Collateral - Unlock Partnership Solutions - [Date] - Certification"
+
+Step 1: Open attached "Schedule I List of Loans.xlsx".
+  Check the asset list against dbo.WSFS_List_Of_Loans table.
+  If records do NOT exist with the certificate ID in the file, proceed to load.
+
+Step 2: Copy the file to:
+  A:\00 - Operations\Document Custody\wsfs\Import
+
+Step 3: Run DBLoader with command:
+  archive -loadtype "WSFS" -server uam_reporting -mail -mailprofile "uam_sendgrid"
+  -to badger@unlock.com -cc jagat.shah@unlock.com
+  -from dbloader.WSFS@unlock.com
+  -subject "WSFS Inventory / Exceptions" -found
+  -folder "A:\00 - Operations\Document Custody\wsfs\Import"
+
+Step 4: Recheck assets against dbo.WSFS_List_Of_Loans table.
+  Processed file moves from Import → Import\Archived automatically.
+
+
+WEEKLY CET MANIFEST PROCESSING
+---------------------------------
+Frequency: Every Friday.
+Trigger: Email from PostClosing@cetitle.com with subject "ClearEdge Export - MM.DD.YYYY".
+Purpose: Loads weekly physical shipment manifest into UAM database so WSFS Daily
+Collateral Shipment Report can be generated and sent to WSFS.
+
+Step 1: Copy attachment from manifest email to:
+  A:\01 - Surveillance\ClearEdge\shipments
+
+Step 2: Run bat file: A:\03 - Applications\DBLoader\cet_manifest.bat
+  This calls DBLoader with arguments:
+    -archive -loadtype "clearedge" -server uam_reporting -mail
+    -mailprofile "uam_sendgrid" -to badger@unlock.com -cc jagat.shah@unlock.com
+    -from dbloader.maxwell@unlock.com
+    -subject "ClearEdge Shipment Manifest Loaded: [@shipments] Shipments with [@assetsCount] Total Assets"
+    -found -folder "A:\01 - Surveillance\ClearEdge\shipments"
+  Writes shipment details to database.
+
+Step 3: Nightly report runner job (GenericLateEvening.bat) automatically sends
+  WSFS Daily Collateral Shipment Report each night.
+  Subject: "WSFS Daily Collateral Shipment Report: @rows[1] Shipments @today"
+  Recipients: custodygroup@wsfsbank.com, badger@unlock.com
+
+Post-dating a manifest run:
+  Update A:\03 - Applications\ReportRunner\SQL\DocumentCustodianDailySummary.sql.
+  Uncomment the date override line, set target date, run ReportRunner.
+  Comment the line back out after completion.
+
+
+BSI BACKUP SERVICER TAPES
+---------------------------
+Frequency: Quarterly. BSI is Unlock's backup servicer.
+Due when: End of each quarter (3/31, 6/30, 9/30, 12/31).
+Accounts: All trusts with a BSI agreement. Must have bsi_investor_code set in dbo.Accounts.
+
+Query to check BSI account codes:
+  SELECT a.bsi_investor_code, a.* FROM Accounts a
+
+If a new trust is created within a quarter, obtain BSI account code/number from BSI before
+submitting the tape. Update the new record in dbo.Accounts.bsi_investor_code.
+
+Step 1: Generate the tape using:
+  A:\00 - Operations\Scripts\Backup Servicing Tape.sql
+  Update the cutoff date to the quarter end (e.g., 9/30/2024 or 12/31/2024).
+
+IMPORTANT: Run ONLY in SQL Server Management Studio (SSMS) with Azure Active Directory
+authentication. Required for decrypting SSN columns (primary SSN, secondary SSN).
+Service credentials cannot decrypt these fields.
+
+Step 2: Copy output to Excel.
+  - Change asset_id column to TEXT to prevent scientific notation conversion.
+  - After pasting, replace all "NULL" values (use Find & Replace in Excel).
+  - Reference previous quarter file for formatting.
+
+Step 3: Save to: A:\00 - Operations\Backup Servicer Tapes (RESTRICTED location)
+
+Step 4: Send file to BSI via SFTP using WinSCP.
+  HOST: sftp2.bsifinancial.com, PORT: 22 (credentials are per-user; managed by IT)
+  Create a new folder at root level: YYYY.MM.DD (e.g., 2024.12.31)
+  Drop the quarterly tape into that folder.
+
+Step 5: Notify BSI that file is available.
+  Email: Delone Martin (dmartin@bsifinancial.com), Shamida V Ambre (sambre@bsifinancial.com)
+
+NOTE: BSI SFTP credentials are NOT stored in this KB. Contact IT for access.

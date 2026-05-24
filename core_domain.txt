@@ -1,0 +1,4427 @@
+=== BADGER KB: COMPLIANCE ===
+CRS: Compliance Reporting System (lib, API, runner)
+============================================================
+
+
+
+--- FILE: CRSLib\CRSLib\Class1.cs ---
+namespace CRSLib
+{
+	public class JointRetrieve
+	{
+
+		[XmlRoot(ElementName = "ABOUT_VERSION", Namespace = "http:
+		public class ABOUT_VERSION
+		{
+			[XmlElement(ElementName = "DataVersionIdentifier", Namespace = "http:
+			public string DataVersionIdentifier { get; set; }
+		}
+
+		[XmlRoot(ElementName = "ABOUT_VERSIONS", Namespace = "http:
+		public class ABOUT_VERSIONS
+		{
+			[XmlElement(ElementName = "ABOUT_VERSION", Namespace = "http:
+			public ABOUT_VERSION ABOUT_VERSION { get; set; }
+		}
+
+		[XmlRoot(ElementName = "NAME", Namespace = "http:
+		public class NAME
+		{
+			[XmlElement(ElementName = "FirstName", Namespace = "http:
+			public string FirstName { get; set; }
+			[XmlElement(ElementName = "LastName", Namespace = "http:
+			public string LastName { get; set; }
+			[XmlElement(ElementName = "MiddleName", Namespace = "http:
+			public string MiddleName { get; set; }
+			[XmlElement(ElementName = "SuffixName", Namespace = "http:
+			public string SuffixName { get; set; }
+		}
+
+		[XmlRoot(ElementName = "INDIVIDUAL", Namespace = "http:
+		public class INDIVIDUAL
+		{
+			[XmlElement(ElementName = "NAME", Namespace = "http:
+			public NAME NAME { get; set; }
+		}
+
+		[XmlRoot(ElementName = "ROLE_DETAIL", Namespace = "http:
+		public class ROLE_DETAIL
+		{
+			[XmlElement(ElementName = "PartyRoleType", Namespace = "http:
+			public string PartyRoleType { get; set; }
+		}
+
+		[XmlRoot(ElementName = "ROLE", Namespace = "http:
+		public class ROLE
+		{
+			[XmlElement(ElementName = "ROLE_DETAIL", Namespace = "http:
+			public ROLE_DETAIL ROLE_DETAIL { get; set; }
+		}
+
+		[XmlRoot(ElementName = "ROLES", Namespace = "http:
+		public class ROLES
+		{
+			[XmlElement(ElementName = "ROLE", Namespace = "http:
+			public ROLE ROLE { get; set; }
+		}
+
+		[XmlRoot(ElementName = "TAXPAYER_IDENTIFIER", Namespace = "http:
+		public class TAXPAYER_IDENTIFIER
+		{
+			[XmlElement(ElementName = "TaxpayerIdentifierType", Namespace = "http:
+			public string TaxpayerIdentifierType { get; set; }
+			[XmlElement(ElementName = "TaxpayerIdentifierValue", Namespace = "http:
+			public string TaxpayerIdentifierValue { get; set; }
+		}
+
+		[XmlRoot(ElementName = "TAXPAYER_IDENTIFIERS", Namespace = "http:
+		public class TAXPAYER_IDENTIFIERS
+		{
+			[XmlElement(ElementName = "TAXPAYER_IDENTIFIER", Namespace = "http:
+			public TAXPAYER_IDENTIFIER TAXPAYER_IDENTIFIER { get; set; }
+		}
+
+		[XmlRoot(ElementName = "PARTY", Namespace = "http:
+		public class PARTY
+		{
+			[XmlElement(ElementName = "INDIVIDUAL", Namespace = "http:
+			public INDIVIDUAL INDIVIDUAL { get; set; }
+			[XmlElement(ElementName = "ROLES", Namespace = "http:
+			public ROLES ROLES { get; set; }
+			[XmlElement(ElementName = "TAXPAYER_IDENTIFIERS", Namespace = "http:
+			public TAXPAYER_IDENTIFIERS TAXPAYER_IDENTIFIERS { get; set; }
+			[XmlAttribute(AttributeName = "SequenceNumber")]
+			public string SequenceNumber { get; set; }
+			[XmlAttribute(AttributeName = "label", Namespace = "http:
+			public string Label { get; set; }
+		}
+
+		[XmlRoot(ElementName = "PARTIES", Namespace = "http:
+		public class PARTIES
+		{
+			[XmlElement(ElementName = "PARTY", Namespace = "http:
+			public List<PARTY> PARTY { get; set; }
+		}
+
+		[XmlRoot(ElementName = "RELATIONSHIP", Namespace = "http:
+		public class RELATIONSHIP
+		{
+			[XmlAttribute(AttributeName = "arcrole", Namespace = "http:
+			public string Arcrole { get; set; }
+			[XmlAttribute(AttributeName = "from", Namespace = "http:
+			public string From { get; set; }
+			[XmlAttribute(AttributeName = "to", Namespace = "http:
+			public string To { get; set; }
+		}
+
+		[XmlRoot(ElementName = "RELATIONSHIPS", Namespace = "http:
+		public class RELATIONSHIPS
+		{
+			[XmlElement(ElementName = "RELATIONSHIP", Namespace = "http:
+			public List<RELATIONSHIP> RELATIONSHIP { get; set; }
+		}
+
+		[XmlRoot(ElementName = "CREDIT_REPOSITORY_INCLUDED", Namespace = "http:
+		public class CREDIT_REPOSITORY_INCLUDED
+		{
+			[XmlElement(ElementName = "CreditRepositoryIncludedEquifaxIndicator", Namespace = "http:
+			public string CreditRepositoryIncludedEquifaxIndicator { get; set; }
+			[XmlElement(ElementName = "CreditRepositoryIncludedExperianIndicator", Namespace = "http:
+			public string CreditRepositoryIncludedExperianIndicator { get; set; }
+			[XmlElement(ElementName = "CreditRepositoryIncludedTransUnionIndicator", Namespace = "http:
+			public string CreditRepositoryIncludedTransUnionIndicator { get; set; }
+		}
+
+		[XmlRoot(ElementName = "CREDIT_REQUEST_DATA_DETAIL", Namespace = "http:
+		public class CREDIT_REQUEST_DATA_DETAIL
+		{
+			[XmlElement(ElementName = "CreditReportRequestActionType", Namespace = "http:
+			public string CreditReportRequestActionType { get; set; }
+		}
+
+		[XmlRoot(ElementName = "CREDIT_REQUEST_DATA", Namespace = "http:
+		public class CREDIT_REQUEST_DATA
+		{
+			[XmlElement(ElementName = "CREDIT_REPOSITORY_INCLUDED", Namespace = "http:
+			public CREDIT_REPOSITORY_INCLUDED CREDIT_REPOSITORY_INCLUDED { get; set; }
+			[XmlElement(ElementName = "CREDIT_REQUEST_DATA_DETAIL", Namespace = "http:
+			public CREDIT_REQUEST_DATA_DETAIL CREDIT_REQUEST_DATA_DETAIL { get; set; }
+		}
+
+		[XmlRoot(ElementName = "CREDIT_REQUEST_DATAS", Namespace = "http:
+		public class CREDIT_REQUEST_DATAS
+		{
+			[XmlElement(ElementName = "CREDIT_REQUEST_DATA", Namespace = "http:
+			public CREDIT_REQUEST_DATA CREDIT_REQUEST_DATA { get; set; }
+		}
+
+		[XmlRoot(ElementName = "CREDIT_REQUEST", Namespace = "http:
+		public class CREDIT_REQUEST
+		{
+			[XmlElement(ElementName = "CREDIT_REQUEST_DATAS", Namespace = "http:
+			public CREDIT_REQUEST_DATAS CREDIT_REQUEST_DATAS { get; set; }
+		}
+
+		[XmlRoot(ElementName = "CREDIT", Namespace = "http:
+		public class CREDIT
+		{
+			[XmlElement(ElementName = "CREDIT_REQUEST", Namespace = "http:
+			public CREDIT_REQUEST CREDIT_REQUEST { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+		public class SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL
+		{
+			[XmlElement(ElementName = "PreferredResponseFormatType", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+			public string PreferredResponseFormatType { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+		public class SERVICE_PREFERRED_RESPONSE_FORMAT
+		{
+			[XmlElement(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+			public SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMATS", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+		public class SERVICE_PREFERRED_RESPONSE_FORMATS
+		{
+			[XmlElement(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+			public List<SERVICE_PREFERRED_RESPONSE_FORMAT> SERVICE_PREFERRED_RESPONSE_FORMAT { get; set; }
+		}
+
+		[XmlRoot(ElementName = "OTHER", Namespace = "http:
+		public class OTHER
+		{
+			[XmlElement(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMATS", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+			public SERVICE_PREFERRED_RESPONSE_FORMATS SERVICE_PREFERRED_RESPONSE_FORMATS { get; set; }
+		}
+
+		[XmlRoot(ElementName = "EXTENSION", Namespace = "http:
+		public class EXTENSION
+		{
+			[XmlElement(ElementName = "OTHER", Namespace = "http:
+			public OTHER OTHER { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PRODUCT_DETAIL", Namespace = "http:
+		public class SERVICE_PRODUCT_DETAIL
+		{
+			[XmlElement(ElementName = "ServiceProductDescription", Namespace = "http:
+			public string ServiceProductDescription { get; set; }
+			[XmlElement(ElementName = "EXTENSION", Namespace = "http:
+			public EXTENSION EXTENSION { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PRODUCT_REQUEST", Namespace = "http:
+		public class SERVICE_PRODUCT_REQUEST
+		{
+			[XmlElement(ElementName = "SERVICE_PRODUCT_DETAIL", Namespace = "http:
+			public SERVICE_PRODUCT_DETAIL SERVICE_PRODUCT_DETAIL { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PRODUCT", Namespace = "http:
+		public class SERVICE_PRODUCT
+		{
+			[XmlElement(ElementName = "SERVICE_PRODUCT_REQUEST", Namespace = "http:
+			public SERVICE_PRODUCT_REQUEST SERVICE_PRODUCT_REQUEST { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PRODUCT_FULFILLMENT_DETAIL", Namespace = "http:
+		public class SERVICE_PRODUCT_FULFILLMENT_DETAIL
+		{
+			[XmlElement(ElementName = "VendorOrderIdentifier", Namespace = "http:
+			public string VendorOrderIdentifier { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PRODUCT_FULFILLMENT", Namespace = "http:
+		public class SERVICE_PRODUCT_FULFILLMENT
+		{
+			[XmlElement(ElementName = "SERVICE_PRODUCT_FULFILLMENT_DETAIL", Namespace = "http:
+			public SERVICE_PRODUCT_FULFILLMENT_DETAIL SERVICE_PRODUCT_FULFILLMENT_DETAIL { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE", Namespace = "http:
+		public class SERVICE
+		{
+			[XmlElement(ElementName = "CREDIT", Namespace = "http:
+			public CREDIT CREDIT { get; set; }
+			[XmlElement(ElementName = "SERVICE_PRODUCT", Namespace = "http:
+			public SERVICE_PRODUCT SERVICE_PRODUCT { get; set; }
+			[XmlElement(ElementName = "SERVICE_PRODUCT_FULFILLMENT", Namespace = "http:
+			public SERVICE_PRODUCT_FULFILLMENT SERVICE_PRODUCT_FULFILLMENT { get; set; }
+			[XmlAttribute(AttributeName = "label", Namespace = "http:
+			public string Label { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICES", Namespace = "http:
+		public class SERVICES
+		{
+			[XmlElement(ElementName = "SERVICE", Namespace = "http:
+			public SERVICE SERVICE { get; set; }
+		}
+
+		[XmlRoot(ElementName = "DEAL", Namespace = "http:
+		public class DEAL
+		{
+			[XmlElement(ElementName = "PARTIES", Namespace = "http:
+			public PARTIES PARTIES { get; set; }
+			[XmlElement(ElementName = "RELATIONSHIPS", Namespace = "http:
+			public RELATIONSHIPS RELATIONSHIPS { get; set; }
+			[XmlElement(ElementName = "SERVICES", Namespace = "http:
+			public SERVICES SERVICES { get; set; }
+		}
+
+		[XmlRoot(ElementName = "DEALS", Namespace = "http:
+		public class DEALS
+		{
+			[XmlElement(ElementName = "DEAL", Namespace = "http:
+			public DEAL DEAL { get; set; }
+		}
+
+		[XmlRoot(ElementName = "DEAL_SET", Namespace = "http:
+		public class DEAL_SET
+		{
+			[XmlElement(ElementName = "DEALS", Namespace = "http:
+			public DEALS DEALS { get; set; }
+		}
+
+		[XmlRoot(ElementName = "DEAL_SETS", Namespace = "http:
+		public class DEAL_SETS
+		{
+			[XmlElement(ElementName = "DEAL_SET", Namespace = "http:
+			public DEAL_SET DEAL_SET { get; set; }
+		}
+
+		[XmlRoot(ElementName = "MESSAGE", Namespace = "http:
+		public class MESSAGE
+		{
+			[XmlElement(ElementName = "ABOUT_VERSIONS", Namespace = "http:
+			public ABOUT_VERSIONS ABOUT_VERSIONS { get; set; }
+			[XmlElement(ElementName = "DEAL_SETS", Namespace = "http:
+			public DEAL_SETS DEAL_SETS { get; set; }
+			[XmlAttribute(AttributeName = "MessageType")]
+			public string MessageType { get; set; }
+			[XmlAttribute(AttributeName = "xmlns")]
+			public string Xmlns { get; set; }
+			[XmlAttribute(AttributeName = "p2", Namespace = "http:
+			public string P2 { get; set; }
+			[XmlAttribute(AttributeName = "p3", Namespace = "http:
+			public string P3 { get; set; }
+		}
+
+	}
+}
+
+
+--- FILE: CRSLib\CRSLib\Loader.cs ---
+namespace CreditLib {
+    public static class Loader 
+    {
+
+        public class CRRequest
+        {
+            public int crrequest_id;
+            public int? filenum;
+            public int requesttype_id;
+        }
+        public static List<CRRequest> GetPendingRequests(string server) 
+        {
+            List<CRRequest> reqs = new List<CRRequest>();
+            
+            
+            
+            
+            string sql = "select  crqueue_id,filenum,requesttype_id from vCRQueue c where c.processed = 0 and c.requesttype_id = 1 and (has_error = 0 or has_error is null) order by request_time asc";
+            
+            Query q = new Query(sql, server);
+            
+            DataTable t = q.ExecuteTable();
+            foreach(DataRow dr in t.Rows)
+            {
+                var r = new CRRequest();
+                r.crrequest_id = dr["crqueue_id"].AsInt().Value;
+                r.filenum = dr["filenum"].AsInt();
+                r.requesttype_id = dr["requesttype_id"].AsInt().Value;
+                reqs.Add(r);
+            }
+            reqs.Shuffle();
+            return reqs;
+        }
+    }
+}
+
+
+--- FILE: CRSLib\CRSLib\Properties\AssemblyInfo.cs ---
+[assembly: AssemblyTitle("CRSLib")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("CRSLib")]
+[assembly: AssemblyCopyright("Copyright ©  2021")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+
+
+
+[assembly: ComVisible(false)]
+
+
+[assembly: Guid("53b4b4c0-1067-42d9-add1-ca7fe50b9bc2")]
+
+
+
+
+
+
+
+
+
+
+
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
+
+--- FILE: CRSLib\CRSLib\RetrieveCreditPullRequest.cs ---
+namespace Xml2CSharp
+{
+	public class RetrieveCreditPullRequest
+	{
+
+		
+		
+		
+		
+
+		[XmlRoot(ElementName = "ABOUT_VERSION", Namespace = "http:
+		public class ABOUT_VERSION
+		{
+			[XmlElement(ElementName = "DataVersionIdentifier", Namespace = "http:
+			public string DataVersionIdentifier { get; set; }
+		}
+
+		[XmlRoot(ElementName = "ABOUT_VERSIONS", Namespace = "http:
+		public class ABOUT_VERSIONS
+		{
+			[XmlElement(ElementName = "ABOUT_VERSION", Namespace = "http:
+			public ABOUT_VERSION ABOUT_VERSION { get; set; }
+		}
+
+		[XmlRoot(ElementName = "NAME", Namespace = "http:
+		public class NAME
+		{
+			[XmlElement(ElementName = "FirstName", Namespace = "http:
+			public string FirstName { get; set; }
+			[XmlElement(ElementName = "LastName", Namespace = "http:
+			public string LastName { get; set; }
+			[XmlElement(ElementName = "MiddleName", Namespace = "http:
+			public string MiddleName { get; set; }
+			[XmlElement(ElementName = "SuffixName", Namespace = "http:
+			public string SuffixName { get; set; }
+		}
+
+		[XmlRoot(ElementName = "INDIVIDUAL", Namespace = "http:
+		public class INDIVIDUAL
+		{
+			[XmlElement(ElementName = "NAME", Namespace = "http:
+			public NAME NAME { get; set; }
+		}
+
+		[XmlRoot(ElementName = "ROLE_DETAIL", Namespace = "http:
+		public class ROLE_DETAIL
+		{
+			[XmlElement(ElementName = "PartyRoleType", Namespace = "http:
+			public string PartyRoleType { get; set; }
+		}
+
+		[XmlRoot(ElementName = "ROLE", Namespace = "http:
+		public class ROLE
+		{
+			[XmlElement(ElementName = "ROLE_DETAIL", Namespace = "http:
+			public ROLE_DETAIL ROLE_DETAIL { get; set; }
+		}
+
+		[XmlRoot(ElementName = "ROLES", Namespace = "http:
+		public class ROLES
+		{
+			[XmlElement(ElementName = "ROLE", Namespace = "http:
+			public ROLE ROLE { get; set; }
+		}
+
+		[XmlRoot(ElementName = "TAXPAYER_IDENTIFIER", Namespace = "http:
+		public class TAXPAYER_IDENTIFIER
+		{
+			[XmlElement(ElementName = "TaxpayerIdentifierType", Namespace = "http:
+			public string TaxpayerIdentifierType { get; set; }
+			[XmlElement(ElementName = "TaxpayerIdentifierValue", Namespace = "http:
+			public string TaxpayerIdentifierValue { get; set; }
+		}
+
+		[XmlRoot(ElementName = "TAXPAYER_IDENTIFIERS", Namespace = "http:
+		public class TAXPAYER_IDENTIFIERS
+		{
+			[XmlElement(ElementName = "TAXPAYER_IDENTIFIER", Namespace = "http:
+			public TAXPAYER_IDENTIFIER TAXPAYER_IDENTIFIER { get; set; }
+		}
+
+		[XmlRoot(ElementName = "PARTY", Namespace = "http:
+		public class PARTY
+		{
+			[XmlElement(ElementName = "INDIVIDUAL", Namespace = "http:
+			public INDIVIDUAL INDIVIDUAL { get; set; }
+			[XmlElement(ElementName = "ROLES", Namespace = "http:
+			public ROLES ROLES { get; set; }
+			[XmlElement(ElementName = "TAXPAYER_IDENTIFIERS", Namespace = "http:
+			public TAXPAYER_IDENTIFIERS TAXPAYER_IDENTIFIERS { get; set; }
+			[XmlAttribute(AttributeName = "label", Namespace = "http:
+			public string Label { get; set; }
+		}
+
+		[XmlRoot(ElementName = "PARTIES", Namespace = "http:
+		public class PARTIES
+		{
+			[XmlElement(ElementName = "PARTY", Namespace = "http:
+			public PARTY PARTY { get; set; }
+		}
+
+		[XmlRoot(ElementName = "RELATIONSHIP", Namespace = "http:
+		public class RELATIONSHIP
+		{
+			[XmlAttribute(AttributeName = "arcrole", Namespace = "http:
+			public string Arcrole { get; set; }
+			[XmlAttribute(AttributeName = "from", Namespace = "http:
+			public string From { get; set; }
+			[XmlAttribute(AttributeName = "to", Namespace = "http:
+			public string To { get; set; }
+		}
+
+		[XmlRoot(ElementName = "RELATIONSHIPS", Namespace = "http:
+		public class RELATIONSHIPS
+		{
+			[XmlElement(ElementName = "RELATIONSHIP", Namespace = "http:
+			public RELATIONSHIP RELATIONSHIP { get; set; }
+		}
+
+		[XmlRoot(ElementName = "CREDIT_REPOSITORY_INCLUDED", Namespace = "http:
+		public class CREDIT_REPOSITORY_INCLUDED
+		{
+			[XmlElement(ElementName = "CreditRepositoryIncludedEquifaxIndicator", Namespace = "http:
+			public string CreditRepositoryIncludedEquifaxIndicator { get; set; }
+			[XmlElement(ElementName = "CreditRepositoryIncludedExperianIndicator", Namespace = "http:
+			public string CreditRepositoryIncludedExperianIndicator { get; set; }
+			[XmlElement(ElementName = "CreditRepositoryIncludedTransUnionIndicator", Namespace = "http:
+			public string CreditRepositoryIncludedTransUnionIndicator { get; set; }
+		}
+
+		[XmlRoot(ElementName = "CREDIT_REQUEST_DATA_DETAIL", Namespace = "http:
+		public class CREDIT_REQUEST_DATA_DETAIL
+		{
+			[XmlElement(ElementName = "CreditReportRequestActionType", Namespace = "http:
+			public string CreditReportRequestActionType { get; set; }
+		}
+
+		[XmlRoot(ElementName = "CREDIT_REQUEST_DATA", Namespace = "http:
+		public class CREDIT_REQUEST_DATA
+		{
+			[XmlElement(ElementName = "CREDIT_REPOSITORY_INCLUDED", Namespace = "http:
+			public CREDIT_REPOSITORY_INCLUDED CREDIT_REPOSITORY_INCLUDED { get; set; }
+			[XmlElement(ElementName = "CREDIT_REQUEST_DATA_DETAIL", Namespace = "http:
+			public CREDIT_REQUEST_DATA_DETAIL CREDIT_REQUEST_DATA_DETAIL { get; set; }
+		}
+
+		[XmlRoot(ElementName = "CREDIT_REQUEST_DATAS", Namespace = "http:
+		public class CREDIT_REQUEST_DATAS
+		{
+			[XmlElement(ElementName = "CREDIT_REQUEST_DATA", Namespace = "http:
+			public CREDIT_REQUEST_DATA CREDIT_REQUEST_DATA { get; set; }
+		}
+
+		[XmlRoot(ElementName = "CREDIT_REQUEST", Namespace = "http:
+		public class CREDIT_REQUEST
+		{
+			[XmlElement(ElementName = "CREDIT_REQUEST_DATAS", Namespace = "http:
+			public CREDIT_REQUEST_DATAS CREDIT_REQUEST_DATAS { get; set; }
+		}
+
+		[XmlRoot(ElementName = "CREDIT", Namespace = "http:
+		public class CREDIT
+		{
+			[XmlElement(ElementName = "CREDIT_REQUEST", Namespace = "http:
+			public CREDIT_REQUEST CREDIT_REQUEST { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+		public class SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL
+		{
+			[XmlElement(ElementName = "PreferredResponseFormatType", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+			public string PreferredResponseFormatType { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+		public class SERVICE_PREFERRED_RESPONSE_FORMAT
+		{
+			[XmlElement(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+			public SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMATS", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+		public class SERVICE_PREFERRED_RESPONSE_FORMATS
+		{
+			[XmlElement(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+			public List<SERVICE_PREFERRED_RESPONSE_FORMAT> SERVICE_PREFERRED_RESPONSE_FORMAT { get; set; }
+		}
+
+		[XmlRoot(ElementName = "OTHER", Namespace = "http:
+		public class OTHER
+		{
+			[XmlElement(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMATS", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+			public SERVICE_PREFERRED_RESPONSE_FORMATS SERVICE_PREFERRED_RESPONSE_FORMATS { get; set; }
+		}
+
+		[XmlRoot(ElementName = "EXTENSION", Namespace = "http:
+		public class EXTENSION
+		{
+			[XmlElement(ElementName = "OTHER", Namespace = "http:
+			public OTHER OTHER { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PRODUCT_DETAIL", Namespace = "http:
+		public class SERVICE_PRODUCT_DETAIL
+		{
+			[XmlElement(ElementName = "ServiceProductDescription", Namespace = "http:
+			public string ServiceProductDescription { get; set; }
+			[XmlElement(ElementName = "EXTENSION", Namespace = "http:
+			public EXTENSION EXTENSION { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PRODUCT_REQUEST", Namespace = "http:
+		public class SERVICE_PRODUCT_REQUEST
+		{
+			[XmlElement(ElementName = "SERVICE_PRODUCT_DETAIL", Namespace = "http:
+			public SERVICE_PRODUCT_DETAIL SERVICE_PRODUCT_DETAIL { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PRODUCT", Namespace = "http:
+		public class SERVICE_PRODUCT
+		{
+			[XmlElement(ElementName = "SERVICE_PRODUCT_REQUEST", Namespace = "http:
+			public SERVICE_PRODUCT_REQUEST SERVICE_PRODUCT_REQUEST { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PRODUCT_FULFILLMENT_DETAIL", Namespace = "http:
+		public class SERVICE_PRODUCT_FULFILLMENT_DETAIL
+		{
+			[XmlElement(ElementName = "VendorOrderIdentifier", Namespace = "http:
+			public string VendorOrderIdentifier { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE_PRODUCT_FULFILLMENT", Namespace = "http:
+		public class SERVICE_PRODUCT_FULFILLMENT
+		{
+			[XmlElement(ElementName = "SERVICE_PRODUCT_FULFILLMENT_DETAIL", Namespace = "http:
+			public SERVICE_PRODUCT_FULFILLMENT_DETAIL SERVICE_PRODUCT_FULFILLMENT_DETAIL { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICE", Namespace = "http:
+		public class SERVICE
+		{
+			[XmlElement(ElementName = "CREDIT", Namespace = "http:
+			public CREDIT CREDIT { get; set; }
+			[XmlElement(ElementName = "SERVICE_PRODUCT", Namespace = "http:
+			public SERVICE_PRODUCT SERVICE_PRODUCT { get; set; }
+			[XmlElement(ElementName = "SERVICE_PRODUCT_FULFILLMENT", Namespace = "http:
+			public SERVICE_PRODUCT_FULFILLMENT SERVICE_PRODUCT_FULFILLMENT { get; set; }
+			[XmlAttribute(AttributeName = "label", Namespace = "http:
+			public string Label { get; set; }
+		}
+
+		[XmlRoot(ElementName = "SERVICES", Namespace = "http:
+		public class SERVICES
+		{
+			[XmlElement(ElementName = "SERVICE", Namespace = "http:
+			public SERVICE SERVICE { get; set; }
+		}
+
+		[XmlRoot(ElementName = "DEAL", Namespace = "http:
+		public class DEAL
+		{
+			[XmlElement(ElementName = "PARTIES", Namespace = "http:
+			public PARTIES PARTIES { get; set; }
+			[XmlElement(ElementName = "RELATIONSHIPS", Namespace = "http:
+			public RELATIONSHIPS RELATIONSHIPS { get; set; }
+			[XmlElement(ElementName = "SERVICES", Namespace = "http:
+			public SERVICES SERVICES { get; set; }
+		}
+
+		[XmlRoot(ElementName = "DEALS", Namespace = "http:
+		public class DEALS
+		{
+			[XmlElement(ElementName = "DEAL", Namespace = "http:
+			public DEAL DEAL { get; set; }
+		}
+
+		[XmlRoot(ElementName = "DEAL_SET", Namespace = "http:
+		public class DEAL_SET
+		{
+			[XmlElement(ElementName = "DEALS", Namespace = "http:
+			public DEALS DEALS { get; set; }
+		}
+
+		[XmlRoot(ElementName = "DEAL_SETS", Namespace = "http:
+		public class DEAL_SETS
+		{
+			[XmlElement(ElementName = "DEAL_SET", Namespace = "http:
+			public DEAL_SET DEAL_SET { get; set; }
+		}
+
+		[XmlRoot(ElementName = "MESSAGE", Namespace = "http:
+		public class MESSAGE
+		{
+			[XmlElement(ElementName = "ABOUT_VERSIONS", Namespace = "http:
+			public ABOUT_VERSIONS ABOUT_VERSIONS { get; set; }
+			[XmlElement(ElementName = "DEAL_SETS", Namespace = "http:
+			public DEAL_SETS DEAL_SETS { get; set; }
+			[XmlAttribute(AttributeName = "MessageType")]
+			public string MessageType { get; set; }
+			[XmlAttribute(AttributeName = "xmlns")]
+			public string Xmlns { get; set; }
+			[XmlAttribute(AttributeName = "p2", Namespace = "http:
+			public string P2 { get; set; }
+			[XmlAttribute(AttributeName = "p3", Namespace = "http:
+			public string P3 { get; set; }
+		}
+
+	}
+}
+
+
+--- FILE: CRSLib\CRSLib\TaxLib.cs ---
+namespace CRSLib
+{
+    public static class TaxLibssad
+    {
+
+    }
+}
+
+
+--- FILE: CRSLib\CRSLib\TaxOrderRequest.cs ---
+namespace CRSLib
+{
+    public class TaxOrderRequest
+    {
+
+        [XmlRoot(ElementName = "ABOUT_VERSION", Namespace = "http:
+        public class ABOUT_VERSION
+        {
+            [XmlElement(ElementName = "DataVersionIdentifier", Namespace = "http:
+            public string DataVersionIdentifier { get; set; }
+        }
+
+        [XmlRoot(ElementName = "ABOUT_VERSIONS", Namespace = "http:
+        public class ABOUT_VERSIONS
+        {
+            [XmlElement(ElementName = "ABOUT_VERSION", Namespace = "http:
+            public ABOUT_VERSION ABOUT_VERSION { get; set; }
+        }
+
+        [XmlRoot(ElementName = "NAME", Namespace = "http:
+        public class NAME
+        {
+            [XmlElement(ElementName = "FirstName", Namespace = "http:
+            public string FirstName { get; set; }
+            [XmlElement(ElementName = "LastName", Namespace = "http:
+            public string LastName { get; set; }
+            [XmlElement(ElementName = "MiddleName", Namespace = "http:
+            public string MiddleName { get; set; }
+        }
+
+        [XmlRoot(ElementName = "INDIVIDUAL", Namespace = "http:
+        public class INDIVIDUAL
+        {
+            [XmlElement(ElementName = "NAME", Namespace = "http:
+            public NAME NAME { get; set; }
+        }
+
+        [XmlRoot(ElementName = "ADDRESS", Namespace = "http:
+        public class ADDRESS
+        {
+            [XmlElement(ElementName = "AddressLineText", Namespace = "http:
+            public string AddressLineText { get; set; }
+            [XmlElement(ElementName = "CityName", Namespace = "http:
+            public string CityName { get; set; }
+            [XmlElement(ElementName = "CountryCode", Namespace = "http:
+            public string CountryCode { get; set; }
+            [XmlElement(ElementName = "PostalCode", Namespace = "http:
+            public string PostalCode { get; set; }
+            [XmlElement(ElementName = "StateCode", Namespace = "http:
+            public string StateCode { get; set; }
+        }
+
+        [XmlRoot(ElementName = "RESIDENCE_DETAIL", Namespace = "http:
+        public class RESIDENCE_DETAIL
+        {
+            [XmlElement(ElementName = "BorrowerResidencyType", Namespace = "http:
+            public string BorrowerResidencyType { get; set; }
+        }
+
+        [XmlRoot(ElementName = "RESIDENCE", Namespace = "http:
+        public class RESIDENCE
+        {
+            [XmlElement(ElementName = "ADDRESS", Namespace = "http:
+            public ADDRESS ADDRESS { get; set; }
+            [XmlElement(ElementName = "RESIDENCE_DETAIL", Namespace = "http:
+            public RESIDENCE_DETAIL RESIDENCE_DETAIL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "RESIDENCES", Namespace = "http:
+        public class RESIDENCES
+        {
+            [XmlElement(ElementName = "RESIDENCE", Namespace = "http:
+            public RESIDENCE RESIDENCE { get; set; }
+        }
+
+        [XmlRoot(ElementName = "BORROWER", Namespace = "http:
+        public class BORROWER
+        {
+            [XmlElement(ElementName = "RESIDENCES", Namespace = "http:
+            public RESIDENCES RESIDENCES { get; set; }
+        }
+
+        [XmlRoot(ElementName = "ROLE_DETAIL", Namespace = "http:
+        public class ROLE_DETAIL
+        {
+            [XmlElement(ElementName = "PartyRoleType", Namespace = "http:
+            public string PartyRoleType { get; set; }
+        }
+
+        [XmlRoot(ElementName = "ROLE", Namespace = "http:
+        public class ROLE
+        {
+            [XmlElement(ElementName = "BORROWER", Namespace = "http:
+            public BORROWER BORROWER { get; set; }
+            [XmlElement(ElementName = "ROLE_DETAIL", Namespace = "http:
+            public ROLE_DETAIL ROLE_DETAIL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "ROLES", Namespace = "http:
+        public class ROLES
+        {
+            [XmlElement(ElementName = "ROLE", Namespace = "http:
+            public ROLE ROLE { get; set; }
+        }
+
+        [XmlRoot(ElementName = "TAXPAYER_IDENTIFIER", Namespace = "http:
+        public class TAXPAYER_IDENTIFIER
+        {
+            [XmlElement(ElementName = "TaxpayerIdentifierType", Namespace = "http:
+            public string TaxpayerIdentifierType { get; set; }
+            [XmlElement(ElementName = "TaxpayerIdentifierValue", Namespace = "http:
+            public string TaxpayerIdentifierValue { get; set; }
+        }
+
+        [XmlRoot(ElementName = "TAXPAYER_IDENTIFIERS", Namespace = "http:
+        public class TAXPAYER_IDENTIFIERS
+        {
+            [XmlElement(ElementName = "TAXPAYER_IDENTIFIER", Namespace = "http:
+            public TAXPAYER_IDENTIFIER TAXPAYER_IDENTIFIER { get; set; }
+        }
+
+        [XmlRoot(ElementName = "PARTY", Namespace = "http:
+        public class PARTY
+        {
+            [XmlElement(ElementName = "INDIVIDUAL", Namespace = "http:
+            public INDIVIDUAL INDIVIDUAL { get; set; }
+            [XmlElement(ElementName = "ROLES", Namespace = "http:
+            public ROLES ROLES { get; set; }
+            [XmlElement(ElementName = "TAXPAYER_IDENTIFIERS", Namespace = "http:
+            public TAXPAYER_IDENTIFIERS TAXPAYER_IDENTIFIERS { get; set; }
+            [XmlAttribute(AttributeName = "label", Namespace = "http:
+            public string Label { get; set; }
+        }
+
+        [XmlRoot(ElementName = "PARTIES", Namespace = "http:
+        public class PARTIES
+        {
+            [XmlElement(ElementName = "PARTY", Namespace = "http:
+            public PARTY PARTY { get; set; }
+        }
+
+        [XmlRoot(ElementName = "RELATIONSHIP", Namespace = "http:
+        public class RELATIONSHIP
+        {
+            [XmlAttribute(AttributeName = "arcrole", Namespace = "http:
+            public string Arcrole { get; set; }
+            [XmlAttribute(AttributeName = "from", Namespace = "http:
+            public string From { get; set; }
+            [XmlAttribute(AttributeName = "to", Namespace = "http:
+            public string To { get; set; }
+        }
+
+        [XmlRoot(ElementName = "RELATIONSHIPS", Namespace = "http:
+        public class RELATIONSHIPS
+        {
+            [XmlElement(ElementName = "RELATIONSHIP", Namespace = "http:
+            public List<RELATIONSHIP> RELATIONSHIP { get; set; }
+        }
+
+        [XmlRoot(ElementName = "OTHER", Namespace = "http:
+        public class OTHER
+        {
+            [XmlElement(ElementName = "Form4506TDeliveryMethod", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public string Form4506TDeliveryMethod { get; set; }
+            [XmlElement(ElementName = "VerificationOfIncomeRequestActionType", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public string VerificationOfIncomeRequestActionType { get; set; }
+            [XmlElement(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMATS", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public SERVICE_PREFERRED_RESPONSE_FORMATS SERVICE_PREFERRED_RESPONSE_FORMATS { get; set; }
+        }
+
+        [XmlRoot(ElementName = "EXTENSION", Namespace = "http:
+        public class EXTENSION
+        {
+            [XmlElement(ElementName = "OTHER", Namespace = "http:
+            public OTHER OTHER { get; set; }
+        }
+
+        [XmlRoot(ElementName = "TAX_RETURN_DOCUMENTATION_DETAIL", Namespace = "http:
+        public class TAX_RETURN_DOCUMENTATION_DETAIL
+        {
+            [XmlElement(ElementName = "AccountTranscriptIndicator", Namespace = "http:
+            public string AccountTranscriptIndicator { get; set; }
+            [XmlElement(ElementName = "IRSDocumentType", Namespace = "http:
+            public string IRSDocumentType { get; set; }
+            [XmlElement(ElementName = "RecordOfAccountIndicator", Namespace = "http:
+            public string RecordOfAccountIndicator { get; set; }
+            [XmlElement(ElementName = "ReturnTranscriptIndicator", Namespace = "http:
+            public string ReturnTranscriptIndicator { get; set; }
+            [XmlElement(ElementName = "VerificationOfNonfilingIndicator", Namespace = "http:
+            public string VerificationOfNonfilingIndicator { get; set; }
+            [XmlElement(ElementName = "EXTENSION", Namespace = "http:
+            public EXTENSION EXTENSION { get; set; }
+        }
+
+        [XmlRoot(ElementName = "TAX_RETURN_DOCUMENTATION_PERIOD", Namespace = "http:
+        public class TAX_RETURN_DOCUMENTATION_PERIOD
+        {
+            [XmlElement(ElementName = "TaxReturnPeriodEndDate", Namespace = "http:
+            public string TaxReturnPeriodEndDate { get; set; }
+        }
+
+        [XmlRoot(ElementName = "TAX_RETURN_DOCUMENTATION_PERIODS", Namespace = "http:
+        public class TAX_RETURN_DOCUMENTATION_PERIODS
+        {
+            [XmlElement(ElementName = "TAX_RETURN_DOCUMENTATION_PERIOD", Namespace = "http:
+            public List<TAX_RETURN_DOCUMENTATION_PERIOD> TAX_RETURN_DOCUMENTATION_PERIOD { get; set; }
+        }
+
+        [XmlRoot(ElementName = "TAX_RETURN_DOCUMENTATION", Namespace = "http:
+        public class TAX_RETURN_DOCUMENTATION
+        {
+            [XmlElement(ElementName = "TAX_RETURN_DOCUMENTATION_DETAIL", Namespace = "http:
+            public TAX_RETURN_DOCUMENTATION_DETAIL TAX_RETURN_DOCUMENTATION_DETAIL { get; set; }
+            [XmlElement(ElementName = "TAX_RETURN_DOCUMENTATION_PERIODS", Namespace = "http:
+            public TAX_RETURN_DOCUMENTATION_PERIODS TAX_RETURN_DOCUMENTATION_PERIODS { get; set; }
+        }
+
+        [XmlRoot(ElementName = "TAX_RETURN_DOCUMENTATIONS", Namespace = "http:
+        public class TAX_RETURN_DOCUMENTATIONS
+        {
+            [XmlElement(ElementName = "TAX_RETURN_DOCUMENTATION", Namespace = "http:
+            public TAX_RETURN_DOCUMENTATION TAX_RETURN_DOCUMENTATION { get; set; }
+        }
+
+        [XmlRoot(ElementName = "REQUEST_FOR_TAX_RETURN_DOCUMENTATION", Namespace = "http:
+        public class REQUEST_FOR_TAX_RETURN_DOCUMENTATION
+        {
+            [XmlElement(ElementName = "TAX_RETURN_DOCUMENTATIONS", Namespace = "http:
+            public TAX_RETURN_DOCUMENTATIONS TAX_RETURN_DOCUMENTATIONS { get; set; }
+        }
+
+        [XmlRoot(ElementName = "VERIFICATION_OF_INCOME_REQUEST", Namespace = "http:
+        public class VERIFICATION_OF_INCOME_REQUEST
+        {
+            [XmlElement(ElementName = "REQUEST_FOR_TAX_RETURN_DOCUMENTATION", Namespace = "http:
+            public REQUEST_FOR_TAX_RETURN_DOCUMENTATION REQUEST_FOR_TAX_RETURN_DOCUMENTATION { get; set; }
+            [XmlElement(ElementName = "EXTENSION", Namespace = "http:
+            public EXTENSION EXTENSION { get; set; }
+        }
+
+        [XmlRoot(ElementName = "VERIFICATION_OF_INCOME", Namespace = "http:
+        public class VERIFICATION_OF_INCOME
+        {
+            [XmlElement(ElementName = "VERIFICATION_OF_INCOME_REQUEST", Namespace = "http:
+            public VERIFICATION_OF_INCOME_REQUEST VERIFICATION_OF_INCOME_REQUEST { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+        public class SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL
+        {
+            [XmlElement(ElementName = "PreferredResponseFormatType", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public string PreferredResponseFormatType { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+        public class SERVICE_PREFERRED_RESPONSE_FORMAT
+        {
+            [XmlElement(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMATS", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+        public class SERVICE_PREFERRED_RESPONSE_FORMATS
+        {
+            [XmlElement(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public SERVICE_PREFERRED_RESPONSE_FORMAT SERVICE_PREFERRED_RESPONSE_FORMAT { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PRODUCT_DETAIL", Namespace = "http:
+        public class SERVICE_PRODUCT_DETAIL
+        {
+            [XmlElement(ElementName = "ServiceProductDescription", Namespace = "http:
+            public string ServiceProductDescription { get; set; }
+            [XmlElement(ElementName = "EXTENSION", Namespace = "http:
+            public EXTENSION EXTENSION { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PRODUCT_REQUEST", Namespace = "http:
+        public class SERVICE_PRODUCT_REQUEST
+        {
+            [XmlElement(ElementName = "SERVICE_PRODUCT_DETAIL", Namespace = "http:
+            public SERVICE_PRODUCT_DETAIL SERVICE_PRODUCT_DETAIL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PRODUCT", Namespace = "http:
+        public class SERVICE_PRODUCT
+        {
+            [XmlElement(ElementName = "SERVICE_PRODUCT_REQUEST", Namespace = "http:
+            public SERVICE_PRODUCT_REQUEST SERVICE_PRODUCT_REQUEST { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE", Namespace = "http:
+        public class SERVICE
+        {
+            [XmlElement(ElementName = "VERIFICATION_OF_INCOME", Namespace = "http:
+            public VERIFICATION_OF_INCOME VERIFICATION_OF_INCOME { get; set; }
+            [XmlElement(ElementName = "SERVICE_PRODUCT", Namespace = "http:
+            public SERVICE_PRODUCT SERVICE_PRODUCT { get; set; }
+            [XmlAttribute(AttributeName = "label", Namespace = "http:
+            public string Label { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICES", Namespace = "http:
+        public class SERVICES
+        {
+            [XmlElement(ElementName = "SERVICE", Namespace = "http:
+            public SERVICE SERVICE { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEAL", Namespace = "http:
+        public class DEAL
+        {
+            [XmlElement(ElementName = "PARTIES", Namespace = "http:
+            public PARTIES PARTIES { get; set; }
+            [XmlElement(ElementName = "RELATIONSHIPS", Namespace = "http:
+            public RELATIONSHIPS RELATIONSHIPS { get; set; }
+            [XmlElement(ElementName = "SERVICES", Namespace = "http:
+            public SERVICES SERVICES { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEALS", Namespace = "http:
+        public class DEALS
+        {
+            [XmlElement(ElementName = "DEAL", Namespace = "http:
+            public DEAL DEAL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEAL_SET", Namespace = "http:
+        public class DEAL_SET
+        {
+            [XmlElement(ElementName = "DEALS", Namespace = "http:
+            public DEALS DEALS { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEAL_SETS", Namespace = "http:
+        public class DEAL_SETS
+        {
+            [XmlElement(ElementName = "DEAL_SET", Namespace = "http:
+            public DEAL_SET DEAL_SET { get; set; }
+        }
+
+        [XmlRoot(ElementName = "FOREIGN_OBJECT", Namespace = "http:
+        public class FOREIGN_OBJECT
+        {
+            [XmlElement(ElementName = "EmbeddedContentXML", Namespace = "http:
+            public string EmbeddedContentXML { get; set; }
+            [XmlElement(ElementName = "CharacterEncodingSetType", Namespace = "http:
+            public string CharacterEncodingSetType { get; set; }
+            [XmlElement(ElementName = "CharacterEncodingSetTypeOtherDescription", Namespace = "http:
+            public string CharacterEncodingSetTypeOtherDescription { get; set; }
+            [XmlElement(ElementName = "MIMETypeIdentifier", Namespace = "http:
+            public string MIMETypeIdentifier { get; set; }
+            [XmlElement(ElementName = "ObjectEncodingType", Namespace = "http:
+            public string ObjectEncodingType { get; set; }
+            [XmlElement(ElementName = "ObjectEncodingTypeOtherDescription", Namespace = "http:
+            public string ObjectEncodingTypeOtherDescription { get; set; }
+        }
+
+        [XmlRoot(ElementName = "VIEW_FILE", Namespace = "http:
+        public class VIEW_FILE
+        {
+            [XmlElement(ElementName = "FOREIGN_OBJECT", Namespace = "http:
+            public FOREIGN_OBJECT FOREIGN_OBJECT { get; set; }
+        }
+
+        [XmlRoot(ElementName = "VIEW_FILES", Namespace = "http:
+        public class VIEW_FILES
+        {
+            [XmlElement(ElementName = "VIEW_FILE", Namespace = "http:
+            public VIEW_FILE VIEW_FILE { get; set; }
+        }
+
+        [XmlRoot(ElementName = "VIEW", Namespace = "http:
+        public class VIEW
+        {
+            [XmlElement(ElementName = "VIEW_FILES", Namespace = "http:
+            public VIEW_FILES VIEW_FILES { get; set; }
+        }
+
+        [XmlRoot(ElementName = "VIEWS", Namespace = "http:
+        public class VIEWS
+        {
+            [XmlElement(ElementName = "VIEW", Namespace = "http:
+            public VIEW VIEW { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DOCUMENT_CLASS", Namespace = "http:
+        public class DOCUMENT_CLASS
+        {
+            [XmlElement(ElementName = "DocumentType", Namespace = "http:
+            public string DocumentType { get; set; }
+            [XmlElement(ElementName = "DocumentTypeOtherDescription", Namespace = "http:
+            public string DocumentTypeOtherDescription { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DOCUMENT_CLASSES", Namespace = "http:
+        public class DOCUMENT_CLASSES
+        {
+            [XmlElement(ElementName = "DOCUMENT_CLASS", Namespace = "http:
+            public DOCUMENT_CLASS DOCUMENT_CLASS { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DOCUMENT_CLASSIFICATION", Namespace = "http:
+        public class DOCUMENT_CLASSIFICATION
+        {
+            [XmlElement(ElementName = "DOCUMENT_CLASSES", Namespace = "http:
+            public DOCUMENT_CLASSES DOCUMENT_CLASSES { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DOCUMENT", Namespace = "http:
+        public class DOCUMENT
+        {
+            [XmlElement(ElementName = "VIEWS", Namespace = "http:
+            public VIEWS VIEWS { get; set; }
+            [XmlElement(ElementName = "DOCUMENT_CLASSIFICATION", Namespace = "http:
+            public DOCUMENT_CLASSIFICATION DOCUMENT_CLASSIFICATION { get; set; }
+            [XmlAttribute(AttributeName = "label", Namespace = "http:
+            public string Label { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DOCUMENTS", Namespace = "http:
+        public class DOCUMENTS
+        {
+            [XmlElement(ElementName = "DOCUMENT", Namespace = "http:
+            public DOCUMENT DOCUMENT { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DOCUMENT_SET", Namespace = "http:
+        public class DOCUMENT_SET
+        {
+            [XmlElement(ElementName = "DOCUMENTS", Namespace = "http:
+            public DOCUMENTS DOCUMENTS { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DOCUMENT_SETS", Namespace = "http:
+        public class DOCUMENT_SETS
+        {
+            [XmlElement(ElementName = "DOCUMENT_SET", Namespace = "http:
+            public DOCUMENT_SET DOCUMENT_SET { get; set; }
+        }
+
+        [XmlRoot(ElementName = "MESSAGE", Namespace = "http:
+        public class MESSAGE
+        {
+            [XmlElement(ElementName = "ABOUT_VERSIONS", Namespace = "http:
+            public ABOUT_VERSIONS ABOUT_VERSIONS { get; set; }
+            [XmlElement(ElementName = "DEAL_SETS", Namespace = "http:
+            public DEAL_SETS DEAL_SETS { get; set; }
+            [XmlElement(ElementName = "DOCUMENT_SETS", Namespace = "http:
+            public DOCUMENT_SETS DOCUMENT_SETS { get; set; }
+            [XmlAttribute(AttributeName = "MessageType")]
+            public string MessageType { get; set; }
+            [XmlAttribute(AttributeName = "xmlns")]
+            public string Xmlns { get; set; }
+            [XmlAttribute(AttributeName = "p2", Namespace = "http:
+            public string P2 { get; set; }
+            [XmlAttribute(AttributeName = "p3", Namespace = "http:
+            public string P3 { get; set; }
+        }
+    }
+}
+
+
+--- FILE: CRSLib\CRSLib\TaxOrderRequestResponse.cs ---
+namespace CRSLib
+{
+
+    public class TaxOrderRequestResponseHelper
+    {
+        TaxOrderRequestResponse.MESSAGE _req;
+        public int file_num;
+        public string status;
+        public string status_description;
+        public string xml;
+
+
+        public TaxOrderRequestResponseHelper(TaxOrderRequestResponse.MESSAGE tor)
+        {
+            _req = tor;
+            file_num = tor.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.SERVICE_PRODUCT_FULFILLMENT.SERVICE_PRODUCT_FULFILLMENT_DETAIL.VendorOrderIdentifier;
+            status = tor.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.STATUSES.STATUS.StatusCode;
+            status_description = tor.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.STATUSES.STATUS.StatusDescription;
+            xml = UtilsLib.XML.Serialize<TaxOrderRequestResponse.MESSAGE>(tor);
+        }
+    }
+
+    public class TaxOrderRequestResponse
+    {
+        [XmlRoot(ElementName = "ABOUT_VERSION", Namespace = "http:
+        public class ABOUT_VERSION
+        {
+            [XmlElement(ElementName = "CreatedDatetime", Namespace = "http:
+            public string CreatedDatetime { get; set; }
+            [XmlElement(ElementName = "DataVersionIdentifier", Namespace = "http:
+            public string DataVersionIdentifier { get; set; }
+        }
+
+        [XmlRoot(ElementName = "ABOUT_VERSIONS", Namespace = "http:
+        public class ABOUT_VERSIONS
+        {
+            [XmlElement(ElementName = "ABOUT_VERSION", Namespace = "http:
+            public ABOUT_VERSION ABOUT_VERSION { get; set; }
+        }
+
+        [XmlRoot(ElementName = "LOAN_IDENTIFIER", Namespace = "http:
+        public class LOAN_IDENTIFIER
+        {
+            [XmlElement(ElementName = "LoanIdentifier", Namespace = "http:
+            public string LoanIdentifier { get; set; }
+        }
+
+        [XmlRoot(ElementName = "LOAN_IDENTIFIERS", Namespace = "http:
+        public class LOAN_IDENTIFIERS
+        {
+            [XmlElement(ElementName = "LOAN_IDENTIFIER", Namespace = "http:
+            public LOAN_IDENTIFIER LOAN_IDENTIFIER { get; set; }
+        }
+
+        [XmlRoot(ElementName = "LOAN", Namespace = "http:
+        public class LOAN
+        {
+            [XmlElement(ElementName = "LOAN_IDENTIFIERS", Namespace = "http:
+            public LOAN_IDENTIFIERS LOAN_IDENTIFIERS { get; set; }
+        }
+
+        [XmlRoot(ElementName = "LOANS", Namespace = "http:
+        public class LOANS
+        {
+            [XmlElement(ElementName = "LOAN", Namespace = "http:
+            public LOAN LOAN { get; set; }
+        }
+
+        [XmlRoot(ElementName = "LEGAL_ENTITY_DETAIL", Namespace = "http:
+        public class LEGAL_ENTITY_DETAIL
+        {
+            [XmlElement(ElementName = "FullName", Namespace = "http:
+            public string FullName { get; set; }
+        }
+
+        [XmlRoot(ElementName = "LEGAL_ENTITY", Namespace = "http:
+        public class LEGAL_ENTITY
+        {
+            [XmlElement(ElementName = "LEGAL_ENTITY_DETAIL", Namespace = "http:
+            public LEGAL_ENTITY_DETAIL LEGAL_ENTITY_DETAIL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "RESPONDING_PARTY", Namespace = "http:
+        public class RESPONDING_PARTY
+        {
+            [XmlElement(ElementName = "RespondingPartyTransactionIdentifier", Namespace = "http:
+            public string RespondingPartyTransactionIdentifier { get; set; }
+        }
+
+        [XmlRoot(ElementName = "ROLE_DETAIL", Namespace = "http:
+        public class ROLE_DETAIL
+        {
+            [XmlElement(ElementName = "PartyRoleType", Namespace = "http:
+            public string PartyRoleType { get; set; }
+        }
+
+        [XmlRoot(ElementName = "ROLE", Namespace = "http:
+        public class ROLE
+        {
+            [XmlElement(ElementName = "RESPONDING_PARTY", Namespace = "http:
+            public RESPONDING_PARTY RESPONDING_PARTY { get; set; }
+            [XmlElement(ElementName = "ROLE_DETAIL", Namespace = "http:
+            public ROLE_DETAIL ROLE_DETAIL { get; set; }
+            [XmlElement(ElementName = "BORROWER", Namespace = "http:
+            public BORROWER BORROWER { get; set; }
+        }
+
+        [XmlRoot(ElementName = "ROLES", Namespace = "http:
+        public class ROLES
+        {
+            [XmlElement(ElementName = "ROLE", Namespace = "http:
+            public ROLE ROLE { get; set; }
+        }
+
+        [XmlRoot(ElementName = "PARTY", Namespace = "http:
+        public class PARTY
+        {
+            [XmlElement(ElementName = "LEGAL_ENTITY", Namespace = "http:
+            public LEGAL_ENTITY LEGAL_ENTITY { get; set; }
+            [XmlElement(ElementName = "ROLES", Namespace = "http:
+            public ROLES ROLES { get; set; }
+            [XmlAttribute(AttributeName = "SequenceNumber")]
+            public string SequenceNumber { get; set; }
+            [XmlAttribute(AttributeName = "label", Namespace = "http:
+            public string Label { get; set; }
+            [XmlAttribute(AttributeName = "d7p1", Namespace = "http:
+            public string D7p1 { get; set; }
+            [XmlElement(ElementName = "INDIVIDUAL", Namespace = "http:
+            public INDIVIDUAL INDIVIDUAL { get; set; }
+            [XmlElement(ElementName = "TAXPAYER_IDENTIFIERS", Namespace = "http:
+            public TAXPAYER_IDENTIFIERS TAXPAYER_IDENTIFIERS { get; set; }
+        }
+
+        [XmlRoot(ElementName = "NAME", Namespace = "http:
+        public class NAME
+        {
+            [XmlElement(ElementName = "FirstName", Namespace = "http:
+            public string FirstName { get; set; }
+            [XmlElement(ElementName = "LastName", Namespace = "http:
+            public string LastName { get; set; }
+        }
+
+        [XmlRoot(ElementName = "INDIVIDUAL", Namespace = "http:
+        public class INDIVIDUAL
+        {
+            [XmlElement(ElementName = "CONTACT_POINTS", Namespace = "http:
+            public string CONTACT_POINTS { get; set; }
+            [XmlElement(ElementName = "NAME", Namespace = "http:
+            public NAME NAME { get; set; }
+        }
+
+        [XmlRoot(ElementName = "BORROWER", Namespace = "http:
+        public class BORROWER
+        {
+            [XmlElement(ElementName = "BORROWER_DETAIL", Namespace = "http:
+            public string BORROWER_DETAIL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "TAXPAYER_IDENTIFIER", Namespace = "http:
+        public class TAXPAYER_IDENTIFIER
+        {
+            [XmlElement(ElementName = "TaxpayerIdentifierType", Namespace = "http:
+            public string TaxpayerIdentifierType { get; set; }
+            [XmlElement(ElementName = "TaxpayerIdentifierValue", Namespace = "http:
+            public string TaxpayerIdentifierValue { get; set; }
+            [XmlAttribute(AttributeName = "SequenceNumber")]
+            public string SequenceNumber { get; set; }
+        }
+
+        [XmlRoot(ElementName = "TAXPAYER_IDENTIFIERS", Namespace = "http:
+        public class TAXPAYER_IDENTIFIERS
+        {
+            [XmlElement(ElementName = "TAXPAYER_IDENTIFIER", Namespace = "http:
+            public TAXPAYER_IDENTIFIER TAXPAYER_IDENTIFIER { get; set; }
+        }
+
+        [XmlRoot(ElementName = "PARTIES", Namespace = "http:
+        public class PARTIES
+        {
+            [XmlElement(ElementName = "PARTY", Namespace = "http:
+            public List<PARTY> PARTY { get; set; }
+        }
+
+        [XmlRoot(ElementName = "RELATIONSHIP", Namespace = "http:
+        public class RELATIONSHIP
+        {
+            [XmlAttribute(AttributeName = "SequenceNumber")]
+            public string SequenceNumber { get; set; }
+            [XmlAttribute(AttributeName = "arcrole", Namespace = "http:
+            public string Arcrole { get; set; }
+            [XmlAttribute(AttributeName = "from", Namespace = "http:
+            public string From { get; set; }
+            [XmlAttribute(AttributeName = "to", Namespace = "http:
+            public string To { get; set; }
+            [XmlAttribute(AttributeName = "d7p1", Namespace = "http:
+            public string D7p1 { get; set; }
+        }
+
+        [XmlRoot(ElementName = "RELATIONSHIPS", Namespace = "http:
+        public class RELATIONSHIPS
+        {
+            [XmlElement(ElementName = "RELATIONSHIP", Namespace = "http:
+            public RELATIONSHIP RELATIONSHIP { get; set; }
+        }
+
+        [XmlRoot(ElementName = "VerificationOfIncomeRequestActionType", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+        public class VerificationOfIncomeRequestActionType
+        {
+            [XmlAttribute(AttributeName = "xmlns")]
+            public string Xmlns { get; set; }
+            [XmlText]
+            public string Text { get; set; }
+        }
+
+        [XmlRoot(ElementName = "OTHER", Namespace = "http:
+        public class OTHER
+        {
+            [XmlElement(ElementName = "VerificationOfIncomeRequestActionType", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public VerificationOfIncomeRequestActionType VerificationOfIncomeRequestActionType { get; set; }
+            [XmlElement(ElementName = "PreferredResponseFormatType", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public PreferredResponseFormatType PreferredResponseFormatType { get; set; }
+        }
+
+        [XmlRoot(ElementName = "EXTENSION", Namespace = "http:
+        public class EXTENSION
+        {
+            [XmlElement(ElementName = "OTHER", Namespace = "http:
+            public OTHER OTHER { get; set; }
+        }
+
+        [XmlRoot(ElementName = "VERIFICATION_OF_INCOME_REQUEST", Namespace = "http:
+        public class VERIFICATION_OF_INCOME_REQUEST
+        {
+            [XmlElement(ElementName = "EXTENSION", Namespace = "http:
+            public EXTENSION EXTENSION { get; set; }
+        }
+
+        [XmlRoot(ElementName = "VERIFICATION_OF_INCOME", Namespace = "http:
+        public class VERIFICATION_OF_INCOME
+        {
+            [XmlElement(ElementName = "VERIFICATION_OF_INCOME_REQUEST", Namespace = "http:
+            public VERIFICATION_OF_INCOME_REQUEST VERIFICATION_OF_INCOME_REQUEST { get; set; }
+        }
+
+        [XmlRoot(ElementName = "PreferredResponseFormatType", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+        public class PreferredResponseFormatType
+        {
+            [XmlAttribute(AttributeName = "xmlns")]
+            public string Xmlns { get; set; }
+            [XmlText]
+            public string Text { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PRODUCT_DETAIL", Namespace = "http:
+        public class SERVICE_PRODUCT_DETAIL
+        {
+            [XmlElement(ElementName = "ServiceProductDescription", Namespace = "http:
+            public string ServiceProductDescription { get; set; }
+            [XmlElement(ElementName = "EXTENSION", Namespace = "http:
+            public EXTENSION EXTENSION { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PRODUCT_REQUEST", Namespace = "http:
+        public class SERVICE_PRODUCT_REQUEST
+        {
+            [XmlElement(ElementName = "SERVICE_PRODUCT_DETAIL", Namespace = "http:
+            public SERVICE_PRODUCT_DETAIL SERVICE_PRODUCT_DETAIL { get; set; }
+            [XmlElement(ElementName = "EXTENSION", Namespace = "http:
+            public string EXTENSION { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PRODUCT", Namespace = "http:
+        public class SERVICE_PRODUCT
+        {
+            [XmlElement(ElementName = "SERVICE_PRODUCT_REQUEST", Namespace = "http:
+            public SERVICE_PRODUCT_REQUEST SERVICE_PRODUCT_REQUEST { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PRODUCT_FULFILLMENT_DETAIL", Namespace = "http:
+        public class SERVICE_PRODUCT_FULFILLMENT_DETAIL
+        {
+            [XmlElement(ElementName = "ServiceActualPriceAmount", Namespace = "http:
+            public string ServiceActualPriceAmount { get; set; }
+            [XmlElement(ElementName = "VendorOrderIdentifier", Namespace = "http:
+            public int VendorOrderIdentifier { get; set; }
+            [XmlElement(ElementName = "EXTENSION", Namespace = "http:
+            public EXTENSION EXTENSION { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PRODUCT_FULFILLMENT", Namespace = "http:
+        public class SERVICE_PRODUCT_FULFILLMENT
+        {
+            [XmlElement(ElementName = "CONTACT_POINTS", Namespace = "http:
+            public string CONTACT_POINTS { get; set; }
+            [XmlElement(ElementName = "SERVICE_PRODUCT_FULFILLMENT_DETAIL", Namespace = "http:
+            public SERVICE_PRODUCT_FULFILLMENT_DETAIL SERVICE_PRODUCT_FULFILLMENT_DETAIL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "STATUS", Namespace = "http:
+        public class STATUS
+        {
+            [XmlElement(ElementName = "StatusCode", Namespace = "http:
+            public string StatusCode { get; set; }
+            [XmlElement(ElementName = "StatusDescription", Namespace = "http:
+            public string StatusDescription { get; set; }
+        }
+
+        [XmlRoot(ElementName = "STATUSES", Namespace = "http:
+        public class STATUSES
+        {
+            [XmlElement(ElementName = "STATUS", Namespace = "http:
+            public STATUS STATUS { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE", Namespace = "http:
+        public class SERVICE
+        {
+            [XmlElement(ElementName = "VERIFICATION_OF_INCOME", Namespace = "http:
+            public VERIFICATION_OF_INCOME VERIFICATION_OF_INCOME { get; set; }
+            [XmlElement(ElementName = "SERVICE_PRODUCT", Namespace = "http:
+            public SERVICE_PRODUCT SERVICE_PRODUCT { get; set; }
+            [XmlElement(ElementName = "SERVICE_PRODUCT_FULFILLMENT", Namespace = "http:
+            public SERVICE_PRODUCT_FULFILLMENT SERVICE_PRODUCT_FULFILLMENT { get; set; }
+            [XmlElement(ElementName = "STATUSES", Namespace = "http:
+            public STATUSES STATUSES { get; set; }
+            [XmlAttribute(AttributeName = "SequenceNumber")]
+            public string SequenceNumber { get; set; }
+            [XmlAttribute(AttributeName = "label", Namespace = "http:
+            public string Label { get; set; }
+            [XmlAttribute(AttributeName = "d7p1", Namespace = "http:
+            public string D7p1 { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICES", Namespace = "http:
+        public class SERVICES
+        {
+            [XmlElement(ElementName = "SERVICE", Namespace = "http:
+            public SERVICE SERVICE { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEAL", Namespace = "http:
+        public class DEAL
+        {
+            [XmlElement(ElementName = "ASSETS", Namespace = "http:
+            public string ASSETS { get; set; }
+            [XmlElement(ElementName = "LOANS", Namespace = "http:
+            public LOANS LOANS { get; set; }
+            [XmlElement(ElementName = "PARTIES", Namespace = "http:
+            public PARTIES PARTIES { get; set; }
+            [XmlElement(ElementName = "RELATIONSHIPS", Namespace = "http:
+            public RELATIONSHIPS RELATIONSHIPS { get; set; }
+            [XmlElement(ElementName = "SERVICES", Namespace = "http:
+            public SERVICES SERVICES { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEALS", Namespace = "http:
+        public class DEALS
+        {
+            [XmlElement(ElementName = "DEAL", Namespace = "http:
+            public DEAL DEAL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEAL_SET", Namespace = "http:
+        public class DEAL_SET
+        {
+            [XmlElement(ElementName = "DEALS", Namespace = "http:
+            public DEALS DEALS { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEAL_SET_SERVICE", Namespace = "http:
+        public class DEAL_SET_SERVICE
+        {
+            [XmlElement(ElementName = "STATUSES", Namespace = "http:
+            public STATUSES STATUSES { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEAL_SET_SERVICES", Namespace = "http:
+        public class DEAL_SET_SERVICES
+        {
+            [XmlElement(ElementName = "DEAL_SET_SERVICE", Namespace = "http:
+            public DEAL_SET_SERVICE DEAL_SET_SERVICE { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEAL_SETS", Namespace = "http:
+        public class DEAL_SETS
+        {
+            [XmlElement(ElementName = "DEAL_SET", Namespace = "http:
+            public DEAL_SET DEAL_SET { get; set; }
+            [XmlElement(ElementName = "DEAL_SET_SERVICES", Namespace = "http:
+            public DEAL_SET_SERVICES DEAL_SET_SERVICES { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DOCUMENT_SET", Namespace = "http:
+        public class DOCUMENT_SET
+        {
+            [XmlElement(ElementName = "DOCUMENTS", Namespace = "http:
+            public string DOCUMENTS { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DOCUMENT_SETS", Namespace = "http:
+        public class DOCUMENT_SETS
+        {
+            [XmlElement(ElementName = "DOCUMENT_SET", Namespace = "http:
+            public DOCUMENT_SET DOCUMENT_SET { get; set; }
+        }
+
+        [XmlRoot(ElementName = "MESSAGE", Namespace = "http:
+        public class MESSAGE
+        {
+            [XmlElement(ElementName = "ABOUT_VERSIONS", Namespace = "http:
+            public ABOUT_VERSIONS ABOUT_VERSIONS { get; set; }
+            [XmlElement(ElementName = "DEAL_SETS", Namespace = "http:
+            public DEAL_SETS DEAL_SETS { get; set; }
+            [XmlElement(ElementName = "DOCUMENT_SETS", Namespace = "http:
+            public DOCUMENT_SETS DOCUMENT_SETS { get; set; }
+            [XmlAttribute(AttributeName = "xsd", Namespace = "http:
+            public string Xsd { get; set; }
+            [XmlAttribute(AttributeName = "xsi", Namespace = "http:
+            public string Xsi { get; set; }
+            [XmlAttribute(AttributeName = "xmlns")]
+            public string Xmlns { get; set; }
+        }
+    }
+}
+
+
+--- FILE: CRSLib\CRSLib\TaxPullRequest.cs ---
+namespace CRSLib
+{
+    public class TaxPullRequest
+    {
+        [XmlRoot(ElementName = "ABOUT_VERSION", Namespace = "http:
+        public class ABOUT_VERSION
+        {
+            [XmlElement(ElementName = "DataVersionIdentifier", Namespace = "http:
+            public string DataVersionIdentifier { get; set; }
+        }
+
+        [XmlRoot(ElementName = "ABOUT_VERSIONS", Namespace = "http:
+        public class ABOUT_VERSIONS
+        {
+            [XmlElement(ElementName = "ABOUT_VERSION", Namespace = "http:
+            public ABOUT_VERSION ABOUT_VERSION { get; set; }
+        }
+
+        [XmlRoot(ElementName = "NAME", Namespace = "http:
+        public class NAME
+        {
+            [XmlElement(ElementName = "FirstName", Namespace = "http:
+            public string FirstName { get; set; }
+            [XmlElement(ElementName = "LastName", Namespace = "http:
+            public string LastName { get; set; }
+            [XmlElement(ElementName = "MiddleName", Namespace = "http:
+            public string MiddleName { get; set; }
+        }
+
+        [XmlRoot(ElementName = "INDIVIDUAL", Namespace = "http:
+        public class INDIVIDUAL
+        {
+            [XmlElement(ElementName = "NAME", Namespace = "http:
+            public NAME NAME { get; set; }
+        }
+
+        [XmlRoot(ElementName = "ROLE_DETAIL", Namespace = "http:
+        public class ROLE_DETAIL
+        {
+            [XmlElement(ElementName = "PartyRoleType", Namespace = "http:
+            public string PartyRoleType { get; set; }
+        }
+
+        [XmlRoot(ElementName = "ROLE", Namespace = "http:
+        public class ROLE
+        {
+            [XmlElement(ElementName = "ROLE_DETAIL", Namespace = "http:
+            public ROLE_DETAIL ROLE_DETAIL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "ROLES", Namespace = "http:
+        public class ROLES
+        {
+            [XmlElement(ElementName = "ROLE", Namespace = "http:
+            public ROLE ROLE { get; set; }
+        }
+
+        [XmlRoot(ElementName = "TAXPAYER_IDENTIFIER", Namespace = "http:
+        public class TAXPAYER_IDENTIFIER
+        {
+            [XmlElement(ElementName = "TaxpayerIdentifierType", Namespace = "http:
+            public string TaxpayerIdentifierType { get; set; }
+            [XmlElement(ElementName = "TaxpayerIdentifierValue", Namespace = "http:
+            public string TaxpayerIdentifierValue { get; set; }
+        }
+
+        [XmlRoot(ElementName = "TAXPAYER_IDENTIFIERS", Namespace = "http:
+        public class TAXPAYER_IDENTIFIERS
+        {
+            [XmlElement(ElementName = "TAXPAYER_IDENTIFIER", Namespace = "http:
+            public TAXPAYER_IDENTIFIER TAXPAYER_IDENTIFIER { get; set; }
+        }
+
+        [XmlRoot(ElementName = "PARTY", Namespace = "http:
+        public class PARTY
+        {
+            [XmlElement(ElementName = "INDIVIDUAL", Namespace = "http:
+            public INDIVIDUAL INDIVIDUAL { get; set; }
+            [XmlElement(ElementName = "ROLES", Namespace = "http:
+            public ROLES ROLES { get; set; }
+            [XmlElement(ElementName = "TAXPAYER_IDENTIFIERS", Namespace = "http:
+            public TAXPAYER_IDENTIFIERS TAXPAYER_IDENTIFIERS { get; set; }
+            [XmlAttribute(AttributeName = "label", Namespace = "http:
+            public string Label { get; set; }
+        }
+
+        [XmlRoot(ElementName = "PARTIES", Namespace = "http:
+        public class PARTIES
+        {
+            [XmlElement(ElementName = "PARTY", Namespace = "http:
+            public PARTY PARTY { get; set; }
+        }
+
+        [XmlRoot(ElementName = "RELATIONSHIP", Namespace = "http:
+        public class RELATIONSHIP
+        {
+            [XmlAttribute(AttributeName = "arcrole", Namespace = "http:
+            public string Arcrole { get; set; }
+            [XmlAttribute(AttributeName = "from", Namespace = "http:
+            public string From { get; set; }
+            [XmlAttribute(AttributeName = "to", Namespace = "http:
+            public string To { get; set; }
+        }
+
+        [XmlRoot(ElementName = "RELATIONSHIPS", Namespace = "http:
+        public class RELATIONSHIPS
+        {
+            [XmlElement(ElementName = "RELATIONSHIP", Namespace = "http:
+            public RELATIONSHIP RELATIONSHIP { get; set; }
+        }
+
+        [XmlRoot(ElementName = "OTHER", Namespace = "http:
+        public class OTHER
+        {
+            [XmlElement(ElementName = "VerificationOfIncomeRequestActionType", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public string VerificationOfIncomeRequestActionType { get; set; }
+            [XmlElement(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMATS", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public SERVICE_PREFERRED_RESPONSE_FORMATS SERVICE_PREFERRED_RESPONSE_FORMATS { get; set; }
+        }
+
+        [XmlRoot(ElementName = "EXTENSION", Namespace = "http:
+        public class EXTENSION
+        {
+            [XmlElement(ElementName = "OTHER", Namespace = "http:
+            public OTHER OTHER { get; set; }
+        }
+
+        [XmlRoot(ElementName = "VERIFICATION_OF_INCOME_REQUEST", Namespace = "http:
+        public class VERIFICATION_OF_INCOME_REQUEST
+        {
+            [XmlElement(ElementName = "EXTENSION", Namespace = "http:
+            public EXTENSION EXTENSION { get; set; }
+        }
+
+        [XmlRoot(ElementName = "VERIFICATION_OF_INCOME", Namespace = "http:
+        public class VERIFICATION_OF_INCOME
+        {
+            [XmlElement(ElementName = "VERIFICATION_OF_INCOME_REQUEST", Namespace = "http:
+            public VERIFICATION_OF_INCOME_REQUEST VERIFICATION_OF_INCOME_REQUEST { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+        public class SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL
+        {
+            [XmlElement(ElementName = "PreferredResponseFormatType", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public string PreferredResponseFormatType { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+        public class SERVICE_PREFERRED_RESPONSE_FORMAT
+        {
+            [XmlElement(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMATS", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+        public class SERVICE_PREFERRED_RESPONSE_FORMATS
+        {
+            [XmlElement(ElementName = "SERVICE_PREFERRED_RESPONSE_FORMAT", Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public SERVICE_PREFERRED_RESPONSE_FORMAT SERVICE_PREFERRED_RESPONSE_FORMAT { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PRODUCT_DETAIL", Namespace = "http:
+        public class SERVICE_PRODUCT_DETAIL
+        {
+            [XmlElement(ElementName = "ServiceProductDescription", Namespace = "http:
+            public string ServiceProductDescription { get; set; }
+            [XmlElement(ElementName = "EXTENSION", Namespace = "http:
+            public EXTENSION EXTENSION { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PRODUCT_REQUEST", Namespace = "http:
+        public class SERVICE_PRODUCT_REQUEST
+        {
+            [XmlElement(ElementName = "SERVICE_PRODUCT_DETAIL", Namespace = "http:
+            public SERVICE_PRODUCT_DETAIL SERVICE_PRODUCT_DETAIL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PRODUCT", Namespace = "http:
+        public class SERVICE_PRODUCT
+        {
+            [XmlElement(ElementName = "SERVICE_PRODUCT_REQUEST", Namespace = "http:
+            public SERVICE_PRODUCT_REQUEST SERVICE_PRODUCT_REQUEST { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PRODUCT_FULFILLMENT_DETAIL", Namespace = "http:
+        public class SERVICE_PRODUCT_FULFILLMENT_DETAIL
+        {
+            [XmlElement(ElementName = "VendorOrderIdentifier", Namespace = "http:
+            public string VendorOrderIdentifier { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE_PRODUCT_FULFILLMENT", Namespace = "http:
+        public class SERVICE_PRODUCT_FULFILLMENT
+        {
+            [XmlElement(ElementName = "SERVICE_PRODUCT_FULFILLMENT_DETAIL", Namespace = "http:
+            public SERVICE_PRODUCT_FULFILLMENT_DETAIL SERVICE_PRODUCT_FULFILLMENT_DETAIL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICE", Namespace = "http:
+        public class SERVICE
+        {
+            [XmlElement(ElementName = "VERIFICATION_OF_INCOME", Namespace = "http:
+            public VERIFICATION_OF_INCOME VERIFICATION_OF_INCOME { get; set; }
+            [XmlElement(ElementName = "SERVICE_PRODUCT", Namespace = "http:
+            public SERVICE_PRODUCT SERVICE_PRODUCT { get; set; }
+            [XmlElement(ElementName = "SERVICE_PRODUCT_FULFILLMENT", Namespace = "http:
+            public SERVICE_PRODUCT_FULFILLMENT SERVICE_PRODUCT_FULFILLMENT { get; set; }
+            [XmlAttribute(AttributeName = "label", Namespace = "http:
+            public string Label { get; set; }
+        }
+
+        [XmlRoot(ElementName = "SERVICES", Namespace = "http:
+        public class SERVICES
+        {
+            [XmlElement(ElementName = "SERVICE", Namespace = "http:
+            public SERVICE SERVICE { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEAL", Namespace = "http:
+        public class DEAL
+        {
+            [XmlElement(ElementName = "PARTIES", Namespace = "http:
+            public PARTIES PARTIES { get; set; }
+            [XmlElement(ElementName = "RELATIONSHIPS", Namespace = "http:
+            public RELATIONSHIPS RELATIONSHIPS { get; set; }
+            [XmlElement(ElementName = "SERVICES", Namespace = "http:
+            public SERVICES SERVICES { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEALS", Namespace = "http:
+        public class DEALS
+        {
+            [XmlElement(ElementName = "DEAL", Namespace = "http:
+            public DEAL DEAL { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEAL_SET", Namespace = "http:
+        public class DEAL_SET
+        {
+            [XmlElement(ElementName = "DEALS", Namespace = "http:
+            public DEALS DEALS { get; set; }
+        }
+
+        [XmlRoot(ElementName = "DEAL_SETS", Namespace = "http:
+        public class DEAL_SETS
+        {
+            [XmlElement(ElementName = "DEAL_SET", Namespace = "http:
+            public DEAL_SET DEAL_SET { get; set; }
+        }
+
+        [XmlRoot(ElementName = "MESSAGE", Namespace = "http:
+        public class MESSAGE
+        {
+            [XmlElement(ElementName = "ABOUT_VERSIONS", Namespace = "http:
+            public ABOUT_VERSIONS ABOUT_VERSIONS { get; set; }
+            [XmlElement(ElementName = "DEAL_SETS", Namespace = "http:
+            public DEAL_SETS DEAL_SETS { get; set; }
+            [XmlAttribute(AttributeName = "MessageType")]
+            public string MessageType { get; set; }
+            [XmlAttribute(AttributeName = "xmlns")]
+            public string Xmlns { get; set; }
+            [XmlAttribute(AttributeName = "p2", Namespace = "http:
+            public string P2 { get; set; }
+            [XmlAttribute(AttributeName = "p3", Namespace = "http:
+            public string P3 { get; set; }
+        }
+
+    }
+}
+
+
+--- FILE: CRSLib\CRSLib\TaxPullResponse.cs ---
+namespace CRSLib
+{
+    public class TaxPullResponse
+    {
+
+        
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        [System.Xml.Serialization.XmlRootAttribute(Namespace = "http:
+        public partial class MESSAGE
+        {
+
+            private MESSAGEABOUT_VERSIONS aBOUT_VERSIONSField;
+
+            private MESSAGEDEAL_SETS dEAL_SETSField;
+
+            private MESSAGEDOCUMENT_SETS dOCUMENT_SETSField;
+            public MESSAGEABOUT_VERSIONS ABOUT_VERSIONS
+            {
+                get
+                {
+                    return this.aBOUT_VERSIONSField;
+                }
+                set
+                {
+                    this.aBOUT_VERSIONSField = value;
+                }
+            }
+            public MESSAGEDEAL_SETS DEAL_SETS
+            {
+                get
+                {
+                    return this.dEAL_SETSField;
+                }
+                set
+                {
+                    this.dEAL_SETSField = value;
+                }
+            }
+            public MESSAGEDOCUMENT_SETS DOCUMENT_SETS
+            {
+                get
+                {
+                    return this.dOCUMENT_SETSField;
+                }
+                set
+                {
+                    this.dOCUMENT_SETSField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEABOUT_VERSIONS
+        {
+
+            private MESSAGEABOUT_VERSIONSABOUT_VERSION aBOUT_VERSIONField;
+            public MESSAGEABOUT_VERSIONSABOUT_VERSION ABOUT_VERSION
+            {
+                get
+                {
+                    return this.aBOUT_VERSIONField;
+                }
+                set
+                {
+                    this.aBOUT_VERSIONField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEABOUT_VERSIONSABOUT_VERSION
+        {
+
+            private System.DateTime createdDatetimeField;
+
+            private uint dataVersionIdentifierField;
+            public System.DateTime CreatedDatetime
+            {
+                get
+                {
+                    return this.createdDatetimeField;
+                }
+                set
+                {
+                    this.createdDatetimeField = value;
+                }
+            }
+            public uint DataVersionIdentifier
+            {
+                get
+                {
+                    return this.dataVersionIdentifierField;
+                }
+                set
+                {
+                    this.dataVersionIdentifierField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETS
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SET dEAL_SETField;
+
+            private MESSAGEDEAL_SETSDEAL_SET_SERVICES dEAL_SET_SERVICESField;
+            public MESSAGEDEAL_SETSDEAL_SET DEAL_SET
+            {
+                get
+                {
+                    return this.dEAL_SETField;
+                }
+                set
+                {
+                    this.dEAL_SETField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SET_SERVICES DEAL_SET_SERVICES
+            {
+                get
+                {
+                    return this.dEAL_SET_SERVICESField;
+                }
+                set
+                {
+                    this.dEAL_SET_SERVICESField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SET
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALS dEALSField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALS DEALS
+            {
+                get
+                {
+                    return this.dEALSField;
+                }
+                set
+                {
+                    this.dEALSField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALS
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEAL dEALField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEAL DEAL
+            {
+                get
+                {
+                    return this.dEALField;
+                }
+                set
+                {
+                    this.dEALField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEAL
+        {
+
+            private object aSSETSField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALLOANS lOANSField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTY[] pARTIESField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALRELATIONSHIP[] rELATIONSHIPSField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICES sERVICESField;
+            public object ASSETS
+            {
+                get
+                {
+                    return this.aSSETSField;
+                }
+                set
+                {
+                    this.aSSETSField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALLOANS LOANS
+            {
+                get
+                {
+                    return this.lOANSField;
+                }
+                set
+                {
+                    this.lOANSField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlArrayItemAttribute("PARTY", IsNullable = false)]
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTY[] PARTIES
+            {
+                get
+                {
+                    return this.pARTIESField;
+                }
+                set
+                {
+                    this.pARTIESField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlArrayItemAttribute("RELATIONSHIP", IsNullable = false)]
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALRELATIONSHIP[] RELATIONSHIPS
+            {
+                get
+                {
+                    return this.rELATIONSHIPSField;
+                }
+                set
+                {
+                    this.rELATIONSHIPSField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICES SERVICES
+            {
+                get
+                {
+                    return this.sERVICESField;
+                }
+                set
+                {
+                    this.sERVICESField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALLOANS
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALLOANSLOAN lOANField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALLOANSLOAN LOAN
+            {
+                get
+                {
+                    return this.lOANField;
+                }
+                set
+                {
+                    this.lOANField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALLOANSLOAN
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALLOANSLOANLOAN_IDENTIFIERS lOAN_IDENTIFIERSField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALLOANSLOANLOAN_IDENTIFIERS LOAN_IDENTIFIERS
+            {
+                get
+                {
+                    return this.lOAN_IDENTIFIERSField;
+                }
+                set
+                {
+                    this.lOAN_IDENTIFIERSField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALLOANSLOANLOAN_IDENTIFIERS
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALLOANSLOANLOAN_IDENTIFIERSLOAN_IDENTIFIER lOAN_IDENTIFIERField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALLOANSLOANLOAN_IDENTIFIERSLOAN_IDENTIFIER LOAN_IDENTIFIER
+            {
+                get
+                {
+                    return this.lOAN_IDENTIFIERField;
+                }
+                set
+                {
+                    this.lOAN_IDENTIFIERField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALLOANSLOANLOAN_IDENTIFIERSLOAN_IDENTIFIER
+        {
+
+            private object loanIdentifierField;
+            public object LoanIdentifier
+            {
+                get
+                {
+                    return this.loanIdentifierField;
+                }
+                set
+                {
+                    this.loanIdentifierField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTY
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYINDIVIDUAL iNDIVIDUALField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYLEGAL_ENTITY lEGAL_ENTITYField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLES rOLESField;
+
+            private object tAXPAYER_IDENTIFIERSField;
+
+            private byte sequenceNumberField;
+
+            private string labelField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYINDIVIDUAL INDIVIDUAL
+            {
+                get
+                {
+                    return this.iNDIVIDUALField;
+                }
+                set
+                {
+                    this.iNDIVIDUALField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYLEGAL_ENTITY LEGAL_ENTITY
+            {
+                get
+                {
+                    return this.lEGAL_ENTITYField;
+                }
+                set
+                {
+                    this.lEGAL_ENTITYField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLES ROLES
+            {
+                get
+                {
+                    return this.rOLESField;
+                }
+                set
+                {
+                    this.rOLESField = value;
+                }
+            }
+            public object TAXPAYER_IDENTIFIERS
+            {
+                get
+                {
+                    return this.tAXPAYER_IDENTIFIERSField;
+                }
+                set
+                {
+                    this.tAXPAYER_IDENTIFIERSField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlAttributeAttribute()]
+            public byte SequenceNumber
+            {
+                get
+                {
+                    return this.sequenceNumberField;
+                }
+                set
+                {
+                    this.sequenceNumberField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlAttributeAttribute(Form = System.Xml.Schema.XmlSchemaForm.Qualified, Namespace = "http:
+            public string label
+            {
+                get
+                {
+                    return this.labelField;
+                }
+                set
+                {
+                    this.labelField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYINDIVIDUAL
+        {
+
+            private object cONTACT_POINTSField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYINDIVIDUALNAME nAMEField;
+            public object CONTACT_POINTS
+            {
+                get
+                {
+                    return this.cONTACT_POINTSField;
+                }
+                set
+                {
+                    this.cONTACT_POINTSField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYINDIVIDUALNAME NAME
+            {
+                get
+                {
+                    return this.nAMEField;
+                }
+                set
+                {
+                    this.nAMEField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYINDIVIDUALNAME
+        {
+
+            private string firstNameField;
+
+            private string lastNameField;
+            public string FirstName
+            {
+                get
+                {
+                    return this.firstNameField;
+                }
+                set
+                {
+                    this.firstNameField = value;
+                }
+            }
+            public string LastName
+            {
+                get
+                {
+                    return this.lastNameField;
+                }
+                set
+                {
+                    this.lastNameField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYLEGAL_ENTITY
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYLEGAL_ENTITYLEGAL_ENTITY_DETAIL lEGAL_ENTITY_DETAILField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYLEGAL_ENTITYLEGAL_ENTITY_DETAIL LEGAL_ENTITY_DETAIL
+            {
+                get
+                {
+                    return this.lEGAL_ENTITY_DETAILField;
+                }
+                set
+                {
+                    this.lEGAL_ENTITY_DETAILField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYLEGAL_ENTITYLEGAL_ENTITY_DETAIL
+        {
+
+            private string fullNameField;
+            public string FullName
+            {
+                get
+                {
+                    return this.fullNameField;
+                }
+                set
+                {
+                    this.fullNameField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLES
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLESROLE rOLEField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLESROLE ROLE
+            {
+                get
+                {
+                    return this.rOLEField;
+                }
+                set
+                {
+                    this.rOLEField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLESROLE
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLESROLEBORROWER bORROWERField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLESROLERESPONDING_PARTY rESPONDING_PARTYField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLESROLEROLE_DETAIL rOLE_DETAILField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLESROLEBORROWER BORROWER
+            {
+                get
+                {
+                    return this.bORROWERField;
+                }
+                set
+                {
+                    this.bORROWERField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLESROLERESPONDING_PARTY RESPONDING_PARTY
+            {
+                get
+                {
+                    return this.rESPONDING_PARTYField;
+                }
+                set
+                {
+                    this.rESPONDING_PARTYField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLESROLEROLE_DETAIL ROLE_DETAIL
+            {
+                get
+                {
+                    return this.rOLE_DETAILField;
+                }
+                set
+                {
+                    this.rOLE_DETAILField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLESROLEBORROWER
+        {
+
+            private object bORROWER_DETAILField;
+            public object BORROWER_DETAIL
+            {
+                get
+                {
+                    return this.bORROWER_DETAILField;
+                }
+                set
+                {
+                    this.bORROWER_DETAILField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLESROLERESPONDING_PARTY
+        {
+
+            private string respondingPartyTransactionIdentifierField;
+            public string RespondingPartyTransactionIdentifier
+            {
+                get
+                {
+                    return this.respondingPartyTransactionIdentifierField;
+                }
+                set
+                {
+                    this.respondingPartyTransactionIdentifierField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALPARTYROLESROLEROLE_DETAIL
+        {
+
+            private string partyRoleTypeField;
+            public string PartyRoleType
+            {
+                get
+                {
+                    return this.partyRoleTypeField;
+                }
+                set
+                {
+                    this.partyRoleTypeField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALRELATIONSHIP
+        {
+
+            private byte sequenceNumberField;
+
+            private string arcroleField;
+
+            private string fromField;
+
+            private string toField;
+            [System.Xml.Serialization.XmlAttributeAttribute()]
+            public byte SequenceNumber
+            {
+                get
+                {
+                    return this.sequenceNumberField;
+                }
+                set
+                {
+                    this.sequenceNumberField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlAttributeAttribute(Form = System.Xml.Schema.XmlSchemaForm.Qualified, Namespace = "http:
+            public string arcrole
+            {
+                get
+                {
+                    return this.arcroleField;
+                }
+                set
+                {
+                    this.arcroleField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlAttributeAttribute(Form = System.Xml.Schema.XmlSchemaForm.Qualified, Namespace = "http:
+            public string from
+            {
+                get
+                {
+                    return this.fromField;
+                }
+                set
+                {
+                    this.fromField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlAttributeAttribute(Form = System.Xml.Schema.XmlSchemaForm.Qualified, Namespace = "http:
+            public string to
+            {
+                get
+                {
+                    return this.toField;
+                }
+                set
+                {
+                    this.toField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICES
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICE sERVICEField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICE SERVICE
+            {
+                get
+                {
+                    return this.sERVICEField;
+                }
+                set
+                {
+                    this.sERVICEField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICE
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICEVERIFICATION_OF_INCOME vERIFICATION_OF_INCOMEField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCT sERVICE_PRODUCTField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCT_FULFILLMENT sERVICE_PRODUCT_FULFILLMENTField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESTATUSES sTATUSESField;
+
+            private byte sequenceNumberField;
+
+            private string labelField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICEVERIFICATION_OF_INCOME VERIFICATION_OF_INCOME
+            {
+                get
+                {
+                    return this.vERIFICATION_OF_INCOMEField;
+                }
+                set
+                {
+                    this.vERIFICATION_OF_INCOMEField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCT SERVICE_PRODUCT
+            {
+                get
+                {
+                    return this.sERVICE_PRODUCTField;
+                }
+                set
+                {
+                    this.sERVICE_PRODUCTField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCT_FULFILLMENT SERVICE_PRODUCT_FULFILLMENT
+            {
+                get
+                {
+                    return this.sERVICE_PRODUCT_FULFILLMENTField;
+                }
+                set
+                {
+                    this.sERVICE_PRODUCT_FULFILLMENTField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESTATUSES STATUSES
+            {
+                get
+                {
+                    return this.sTATUSESField;
+                }
+                set
+                {
+                    this.sTATUSESField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlAttributeAttribute()]
+            public byte SequenceNumber
+            {
+                get
+                {
+                    return this.sequenceNumberField;
+                }
+                set
+                {
+                    this.sequenceNumberField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlAttributeAttribute(Form = System.Xml.Schema.XmlSchemaForm.Qualified, Namespace = "http:
+            public string label
+            {
+                get
+                {
+                    return this.labelField;
+                }
+                set
+                {
+                    this.labelField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICEVERIFICATION_OF_INCOME
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICEVERIFICATION_OF_INCOMEVERIFICATION_OF_INCOME_REQUEST vERIFICATION_OF_INCOME_REQUESTField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICEVERIFICATION_OF_INCOMEVERIFICATION_OF_INCOME_REQUEST VERIFICATION_OF_INCOME_REQUEST
+            {
+                get
+                {
+                    return this.vERIFICATION_OF_INCOME_REQUESTField;
+                }
+                set
+                {
+                    this.vERIFICATION_OF_INCOME_REQUESTField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICEVERIFICATION_OF_INCOMEVERIFICATION_OF_INCOME_REQUEST
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICEVERIFICATION_OF_INCOMEVERIFICATION_OF_INCOME_REQUESTEXTENSION eXTENSIONField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICEVERIFICATION_OF_INCOMEVERIFICATION_OF_INCOME_REQUESTEXTENSION EXTENSION
+            {
+                get
+                {
+                    return this.eXTENSIONField;
+                }
+                set
+                {
+                    this.eXTENSIONField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICEVERIFICATION_OF_INCOMEVERIFICATION_OF_INCOME_REQUESTEXTENSION
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICEVERIFICATION_OF_INCOMEVERIFICATION_OF_INCOME_REQUESTEXTENSIONOTHER oTHERField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICEVERIFICATION_OF_INCOMEVERIFICATION_OF_INCOME_REQUESTEXTENSIONOTHER OTHER
+            {
+                get
+                {
+                    return this.oTHERField;
+                }
+                set
+                {
+                    this.oTHERField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICEVERIFICATION_OF_INCOMEVERIFICATION_OF_INCOME_REQUESTEXTENSIONOTHER
+        {
+
+            private string verificationOfIncomeRequestActionTypeField;
+            [System.Xml.Serialization.XmlElementAttribute(Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public string VerificationOfIncomeRequestActionType
+            {
+                get
+                {
+                    return this.verificationOfIncomeRequestActionTypeField;
+                }
+                set
+                {
+                    this.verificationOfIncomeRequestActionTypeField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCT
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUEST sERVICE_PRODUCT_REQUESTField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUEST SERVICE_PRODUCT_REQUEST
+            {
+                get
+                {
+                    return this.sERVICE_PRODUCT_REQUESTField;
+                }
+                set
+                {
+                    this.sERVICE_PRODUCT_REQUESTField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUEST
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTSERVICE_PRODUCT_DETAIL sERVICE_PRODUCT_DETAILField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTEXTENSION eXTENSIONField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTSERVICE_PRODUCT_DETAIL SERVICE_PRODUCT_DETAIL
+            {
+                get
+                {
+                    return this.sERVICE_PRODUCT_DETAILField;
+                }
+                set
+                {
+                    this.sERVICE_PRODUCT_DETAILField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTEXTENSION EXTENSION
+            {
+                get
+                {
+                    return this.eXTENSIONField;
+                }
+                set
+                {
+                    this.eXTENSIONField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTSERVICE_PRODUCT_DETAIL
+        {
+
+            private string serviceProductDescriptionField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTSERVICE_PRODUCT_DETAILEXTENSION eXTENSIONField;
+            public string ServiceProductDescription
+            {
+                get
+                {
+                    return this.serviceProductDescriptionField;
+                }
+                set
+                {
+                    this.serviceProductDescriptionField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTSERVICE_PRODUCT_DETAILEXTENSION EXTENSION
+            {
+                get
+                {
+                    return this.eXTENSIONField;
+                }
+                set
+                {
+                    this.eXTENSIONField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTSERVICE_PRODUCT_DETAILEXTENSION
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTSERVICE_PRODUCT_DETAILEXTENSIONOTHER oTHERField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTSERVICE_PRODUCT_DETAILEXTENSIONOTHER OTHER
+            {
+                get
+                {
+                    return this.oTHERField;
+                }
+                set
+                {
+                    this.oTHERField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTSERVICE_PRODUCT_DETAILEXTENSIONOTHER
+        {
+
+            private string preferredResponseFormatTypeField;
+            [System.Xml.Serialization.XmlElementAttribute(Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public string PreferredResponseFormatType
+            {
+                get
+                {
+                    return this.preferredResponseFormatTypeField;
+                }
+                set
+                {
+                    this.preferredResponseFormatTypeField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTEXTENSION
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTEXTENSIONOTHER oTHERField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTEXTENSIONOTHER OTHER
+            {
+                get
+                {
+                    return this.oTHERField;
+                }
+                set
+                {
+                    this.oTHERField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCTSERVICE_PRODUCT_REQUESTEXTENSIONOTHER
+        {
+
+            private SERVICE_PRODUCT_IDENTIFIERS sERVICE_PRODUCT_IDENTIFIERSField;
+            [System.Xml.Serialization.XmlElementAttribute(Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+            public SERVICE_PRODUCT_IDENTIFIERS SERVICE_PRODUCT_IDENTIFIERS
+            {
+                get
+                {
+                    return this.sERVICE_PRODUCT_IDENTIFIERSField;
+                }
+                set
+                {
+                    this.sERVICE_PRODUCT_IDENTIFIERSField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+        [System.Xml.Serialization.XmlRootAttribute(Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd", IsNullable = false)]
+        public partial class SERVICE_PRODUCT_IDENTIFIERS
+        {
+
+            private SERVICE_PRODUCT_IDENTIFIERSSERVICE_PRODUCT_IDENTIFIER sERVICE_PRODUCT_IDENTIFIERField;
+            public SERVICE_PRODUCT_IDENTIFIERSSERVICE_PRODUCT_IDENTIFIER SERVICE_PRODUCT_IDENTIFIER
+            {
+                get
+                {
+                    return this.sERVICE_PRODUCT_IDENTIFIERField;
+                }
+                set
+                {
+                    this.sERVICE_PRODUCT_IDENTIFIERField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+        public partial class SERVICE_PRODUCT_IDENTIFIERSSERVICE_PRODUCT_IDENTIFIER
+        {
+
+            private SERVICE_PRODUCT_IDENTIFIERSSERVICE_PRODUCT_IDENTIFIERSERVICE_PRODUCT_IDENTIFIER_DETAIL sERVICE_PRODUCT_IDENTIFIER_DETAILField;
+            public SERVICE_PRODUCT_IDENTIFIERSSERVICE_PRODUCT_IDENTIFIERSERVICE_PRODUCT_IDENTIFIER_DETAIL SERVICE_PRODUCT_IDENTIFIER_DETAIL
+            {
+                get
+                {
+                    return this.sERVICE_PRODUCT_IDENTIFIER_DETAILField;
+                }
+                set
+                {
+                    this.sERVICE_PRODUCT_IDENTIFIER_DETAILField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "inetapi/MISMO3_4_MCL_Extension.xsd")]
+        public partial class SERVICE_PRODUCT_IDENTIFIERSSERVICE_PRODUCT_IDENTIFIERSERVICE_PRODUCT_IDENTIFIER_DETAIL
+        {
+
+            private string productIdentifierField;
+
+            private string productIdentifierTypeField;
+
+            private string sourceNameField;
+
+            private byte sourceIdentifierField;
+            public string ProductIdentifier
+            {
+                get
+                {
+                    return this.productIdentifierField;
+                }
+                set
+                {
+                    this.productIdentifierField = value;
+                }
+            }
+            public string ProductIdentifierType
+            {
+                get
+                {
+                    return this.productIdentifierTypeField;
+                }
+                set
+                {
+                    this.productIdentifierTypeField = value;
+                }
+            }
+            public string SourceName
+            {
+                get
+                {
+                    return this.sourceNameField;
+                }
+                set
+                {
+                    this.sourceNameField = value;
+                }
+            }
+            public byte SourceIdentifier
+            {
+                get
+                {
+                    return this.sourceIdentifierField;
+                }
+                set
+                {
+                    this.sourceIdentifierField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCT_FULFILLMENT
+        {
+
+            private object cONTACT_POINTSField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCT_FULFILLMENTSERVICE_PRODUCT_FULFILLMENT_DETAIL sERVICE_PRODUCT_FULFILLMENT_DETAILField;
+            public object CONTACT_POINTS
+            {
+                get
+                {
+                    return this.cONTACT_POINTSField;
+                }
+                set
+                {
+                    this.cONTACT_POINTSField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCT_FULFILLMENTSERVICE_PRODUCT_FULFILLMENT_DETAIL SERVICE_PRODUCT_FULFILLMENT_DETAIL
+            {
+                get
+                {
+                    return this.sERVICE_PRODUCT_FULFILLMENT_DETAILField;
+                }
+                set
+                {
+                    this.sERVICE_PRODUCT_FULFILLMENT_DETAILField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCT_FULFILLMENTSERVICE_PRODUCT_FULFILLMENT_DETAIL
+        {
+
+            private System.DateTime serviceActualCompletionDateField;
+
+            private decimal serviceActualPriceAmountField;
+
+            private int vendorOrderIdentifierField;
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCT_FULFILLMENTSERVICE_PRODUCT_FULFILLMENT_DETAILEXTENSION eXTENSIONField;
+            [System.Xml.Serialization.XmlElementAttribute(DataType = "date")]
+            public System.DateTime ServiceActualCompletionDate
+            {
+                get
+                {
+                    return this.serviceActualCompletionDateField;
+                }
+                set
+                {
+                    this.serviceActualCompletionDateField = value;
+                }
+            }
+            public decimal ServiceActualPriceAmount
+            {
+                get
+                {
+                    return this.serviceActualPriceAmountField;
+                }
+                set
+                {
+                    this.serviceActualPriceAmountField = value;
+                }
+            }
+            public int VendorOrderIdentifier
+            {
+                get
+                {
+                    return this.vendorOrderIdentifierField;
+                }
+                set
+                {
+                    this.vendorOrderIdentifierField = value;
+                }
+            }
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCT_FULFILLMENTSERVICE_PRODUCT_FULFILLMENT_DETAILEXTENSION EXTENSION
+            {
+                get
+                {
+                    return this.eXTENSIONField;
+                }
+                set
+                {
+                    this.eXTENSIONField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESERVICE_PRODUCT_FULFILLMENTSERVICE_PRODUCT_FULFILLMENT_DETAILEXTENSION
+        {
+
+            private object oTHERField;
+            public object OTHER
+            {
+                get
+                {
+                    return this.oTHERField;
+                }
+                set
+                {
+                    this.oTHERField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESTATUSES
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESTATUSESSTATUS sTATUSField;
+            public MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESTATUSESSTATUS STATUS
+            {
+                get
+                {
+                    return this.sTATUSField;
+                }
+                set
+                {
+                    this.sTATUSField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SETDEALSDEALSERVICESSERVICESTATUSESSTATUS
+        {
+
+            private string statusCodeField;
+
+            private string statusDescriptionField;
+            public string StatusCode
+            {
+                get
+                {
+                    return this.statusCodeField;
+                }
+                set
+                {
+                    this.statusCodeField = value;
+                }
+            }
+            public string StatusDescription
+            {
+                get
+                {
+                    return this.statusDescriptionField;
+                }
+                set
+                {
+                    this.statusDescriptionField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SET_SERVICES
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SET_SERVICESDEAL_SET_SERVICE dEAL_SET_SERVICEField;
+            public MESSAGEDEAL_SETSDEAL_SET_SERVICESDEAL_SET_SERVICE DEAL_SET_SERVICE
+            {
+                get
+                {
+                    return this.dEAL_SET_SERVICEField;
+                }
+                set
+                {
+                    this.dEAL_SET_SERVICEField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SET_SERVICESDEAL_SET_SERVICE
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SET_SERVICESDEAL_SET_SERVICESTATUSES sTATUSESField;
+            public MESSAGEDEAL_SETSDEAL_SET_SERVICESDEAL_SET_SERVICESTATUSES STATUSES
+            {
+                get
+                {
+                    return this.sTATUSESField;
+                }
+                set
+                {
+                    this.sTATUSESField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SET_SERVICESDEAL_SET_SERVICESTATUSES
+        {
+
+            private MESSAGEDEAL_SETSDEAL_SET_SERVICESDEAL_SET_SERVICESTATUSESSTATUS sTATUSField;
+            public MESSAGEDEAL_SETSDEAL_SET_SERVICESDEAL_SET_SERVICESTATUSESSTATUS STATUS
+            {
+                get
+                {
+                    return this.sTATUSField;
+                }
+                set
+                {
+                    this.sTATUSField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDEAL_SETSDEAL_SET_SERVICESDEAL_SET_SERVICESTATUSESSTATUS
+        {
+
+            private string statusDescriptionField;
+            public string StatusDescription
+            {
+                get
+                {
+                    return this.statusDescriptionField;
+                }
+                set
+                {
+                    this.statusDescriptionField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDOCUMENT_SETS
+        {
+
+            private MESSAGEDOCUMENT_SETSDOCUMENT_SET dOCUMENT_SETField;
+            public MESSAGEDOCUMENT_SETSDOCUMENT_SET DOCUMENT_SET
+            {
+                get
+                {
+                    return this.dOCUMENT_SETField;
+                }
+                set
+                {
+                    this.dOCUMENT_SETField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDOCUMENT_SETSDOCUMENT_SET
+        {
+
+            private MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTS dOCUMENTSField;
+            public MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTS DOCUMENTS
+            {
+                get
+                {
+                    return this.dOCUMENTSField;
+                }
+                set
+                {
+                    this.dOCUMENTSField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTS
+        {
+
+            private MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENT dOCUMENTField;
+            public MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENT DOCUMENT
+            {
+                get
+                {
+                    return this.dOCUMENTField;
+                }
+                set
+                {
+                    this.dOCUMENTField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENT
+        {
+
+            private MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWS vIEWSField;
+
+            private MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTDOCUMENT_CLASSIFICATION dOCUMENT_CLASSIFICATIONField;
+
+            private byte sequenceNumberField;
+
+            private string labelField;
+            public MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWS VIEWS
+            {
+                get
+                {
+                    return this.vIEWSField;
+                }
+                set
+                {
+                    this.vIEWSField = value;
+                }
+            }
+            public MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTDOCUMENT_CLASSIFICATION DOCUMENT_CLASSIFICATION
+            {
+                get
+                {
+                    return this.dOCUMENT_CLASSIFICATIONField;
+                }
+                set
+                {
+                    this.dOCUMENT_CLASSIFICATIONField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlAttributeAttribute()]
+            public byte SequenceNumber
+            {
+                get
+                {
+                    return this.sequenceNumberField;
+                }
+                set
+                {
+                    this.sequenceNumberField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlAttributeAttribute(Form = System.Xml.Schema.XmlSchemaForm.Qualified, Namespace = "http:
+            public string label
+            {
+                get
+                {
+                    return this.labelField;
+                }
+                set
+                {
+                    this.labelField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWS
+        {
+
+            private MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWSVIEW vIEWField;
+            public MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWSVIEW VIEW
+            {
+                get
+                {
+                    return this.vIEWField;
+                }
+                set
+                {
+                    this.vIEWField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWSVIEW
+        {
+
+            private MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWSVIEWVIEW_FILES vIEW_FILESField;
+            public MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWSVIEWVIEW_FILES VIEW_FILES
+            {
+                get
+                {
+                    return this.vIEW_FILESField;
+                }
+                set
+                {
+                    this.vIEW_FILESField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWSVIEWVIEW_FILES
+        {
+
+            private MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWSVIEWVIEW_FILESVIEW_FILE vIEW_FILEField;
+            public MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWSVIEWVIEW_FILESVIEW_FILE VIEW_FILE
+            {
+                get
+                {
+                    return this.vIEW_FILEField;
+                }
+                set
+                {
+                    this.vIEW_FILEField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWSVIEWVIEW_FILESVIEW_FILE
+        {
+
+            private MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWSVIEWVIEW_FILESVIEW_FILEFOREIGN_OBJECT fOREIGN_OBJECTField;
+            public MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWSVIEWVIEW_FILESVIEW_FILEFOREIGN_OBJECT FOREIGN_OBJECT
+            {
+                get
+                {
+                    return this.fOREIGN_OBJECTField;
+                }
+                set
+                {
+                    this.fOREIGN_OBJECTField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTVIEWSVIEWVIEW_FILESVIEW_FILEFOREIGN_OBJECT
+        {
+
+            private string embeddedContentXMLField;
+
+            private string characterEncodingSetTypeField;
+
+            private string mIMETypeIdentifierField;
+
+            private string objectEncodingTypeField;
+
+            private string objectEncodingTypeOtherDescriptionField;
+            public string EmbeddedContentXML
+            {
+                get
+                {
+                    return this.embeddedContentXMLField;
+                }
+                set
+                {
+                    this.embeddedContentXMLField = value;
+                }
+            }
+            public string CharacterEncodingSetType
+            {
+                get
+                {
+                    return this.characterEncodingSetTypeField;
+                }
+                set
+                {
+                    this.characterEncodingSetTypeField = value;
+                }
+            }
+            public string MIMETypeIdentifier
+            {
+                get
+                {
+                    return this.mIMETypeIdentifierField;
+                }
+                set
+                {
+                    this.mIMETypeIdentifierField = value;
+                }
+            }
+            public string ObjectEncodingType
+            {
+                get
+                {
+                    return this.objectEncodingTypeField;
+                }
+                set
+                {
+                    this.objectEncodingTypeField = value;
+                }
+            }
+            public string ObjectEncodingTypeOtherDescription
+            {
+                get
+                {
+                    return this.objectEncodingTypeOtherDescriptionField;
+                }
+                set
+                {
+                    this.objectEncodingTypeOtherDescriptionField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTDOCUMENT_CLASSIFICATION
+        {
+
+            private object dOCUMENT_CLASSESField;
+
+            private MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTDOCUMENT_CLASSIFICATIONDOCUMENT_CLASSIFICATION_DETAIL dOCUMENT_CLASSIFICATION_DETAILField;
+            public object DOCUMENT_CLASSES
+            {
+                get
+                {
+                    return this.dOCUMENT_CLASSESField;
+                }
+                set
+                {
+                    this.dOCUMENT_CLASSESField = value;
+                }
+            }
+            public MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTDOCUMENT_CLASSIFICATIONDOCUMENT_CLASSIFICATION_DETAIL DOCUMENT_CLASSIFICATION_DETAIL
+            {
+                get
+                {
+                    return this.dOCUMENT_CLASSIFICATION_DETAILField;
+                }
+                set
+                {
+                    this.dOCUMENT_CLASSIFICATION_DETAILField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http:
+        public partial class MESSAGEDOCUMENT_SETSDOCUMENT_SETDOCUMENTSDOCUMENTDOCUMENT_CLASSIFICATIONDOCUMENT_CLASSIFICATION_DETAIL
+        {
+
+            private uint documentFormPublisherNumberIdentifierField;
+
+            private string documentNameField;
+            public uint DocumentFormPublisherNumberIdentifier
+            {
+                get
+                {
+                    return this.documentFormPublisherNumberIdentifierField;
+                }
+                set
+                {
+                    this.documentFormPublisherNumberIdentifierField = value;
+                }
+            }
+            public string DocumentName
+            {
+                get
+                {
+                    return this.documentNameField;
+                }
+                set
+                {
+                    this.documentNameField = value;
+                }
+            }
+        }
+
+
+    }
+}
+
+
+--- FILE: CRSLib\CRSLib\TaxTranscript.cs ---
+namespace CRSLib
+{
+    public class TaxTranscript
+    {
+
+        
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true)]
+        [System.Xml.Serialization.XmlRootAttribute(Namespace = "", IsNullable = false)]
+        public partial class TaxTranscripts
+        {
+
+            private TaxTranscriptsEIVTAXTRANSCRIPT_V100[] eIVTAXTRANSCRIPT_V100Field;
+            [System.Xml.Serialization.XmlElementAttribute("EIVTAXTRANSCRIPT_V100")]
+            public TaxTranscriptsEIVTAXTRANSCRIPT_V100[] EIVTAXTRANSCRIPT_V100
+            {
+                get
+                {
+                    return this.eIVTAXTRANSCRIPT_V100Field;
+                }
+                set
+                {
+                    this.eIVTAXTRANSCRIPT_V100Field = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true)]
+        public partial class TaxTranscriptsEIVTAXTRANSCRIPT_V100
+        {
+
+            private ushort yEARField;
+
+            private string rEQUESTDATEField;
+
+            private string rESPONSEDATEField;
+
+            private long tRACKINGNUMBERField;
+
+            private string sSNPROVIDEDField;
+
+            private string tAXPERIODENDINGField;
+
+            private TaxTranscriptsEIVTAXTRANSCRIPT_V100FORM[] fORMField;
+            public ushort YEAR
+            {
+                get
+                {
+                    return this.yEARField;
+                }
+                set
+                {
+                    this.yEARField = value;
+                }
+            }
+            public string REQUESTDATE
+            {
+                get
+                {
+                    return this.rEQUESTDATEField;
+                }
+                set
+                {
+                    this.rEQUESTDATEField = value;
+                }
+            }
+            public string RESPONSEDATE
+            {
+                get
+                {
+                    return this.rESPONSEDATEField;
+                }
+                set
+                {
+                    this.rESPONSEDATEField = value;
+                }
+            }
+            public long TRACKINGNUMBER
+            {
+                get
+                {
+                    return this.tRACKINGNUMBERField;
+                }
+                set
+                {
+                    this.tRACKINGNUMBERField = value;
+                }
+            }
+            public string SSNPROVIDED
+            {
+                get
+                {
+                    return this.sSNPROVIDEDField;
+                }
+                set
+                {
+                    this.sSNPROVIDEDField = value;
+                }
+            }
+            public string TAXPERIODENDING
+            {
+                get
+                {
+                    return this.tAXPERIODENDINGField;
+                }
+                set
+                {
+                    this.tAXPERIODENDINGField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlElementAttribute("FORM")]
+            public TaxTranscriptsEIVTAXTRANSCRIPT_V100FORM[] FORM
+            {
+                get
+                {
+                    return this.fORMField;
+                }
+                set
+                {
+                    this.fORMField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true)]
+        public partial class TaxTranscriptsEIVTAXTRANSCRIPT_V100FORM
+        {
+
+            private string fORMTYPEField;
+
+            private TaxTranscriptsEIVTAXTRANSCRIPT_V100FORMFORM1040HEADER fORM1040HEADERField;
+
+            private TaxTranscriptsEIVTAXTRANSCRIPT_V100FORMSECTION[] sECTIONSField;
+            public string FORMTYPE
+            {
+                get
+                {
+                    return this.fORMTYPEField;
+                }
+                set
+                {
+                    this.fORMTYPEField = value;
+                }
+            }
+            public TaxTranscriptsEIVTAXTRANSCRIPT_V100FORMFORM1040HEADER FORM1040HEADER
+            {
+                get
+                {
+                    return this.fORM1040HEADERField;
+                }
+                set
+                {
+                    this.fORM1040HEADERField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlArrayItemAttribute("SECTION", IsNullable = false)]
+            public TaxTranscriptsEIVTAXTRANSCRIPT_V100FORMSECTION[] SECTIONS
+            {
+                get
+                {
+                    return this.sECTIONSField;
+                }
+                set
+                {
+                    this.sECTIONSField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true)]
+        public partial class TaxTranscriptsEIVTAXTRANSCRIPT_V100FORMFORM1040HEADER
+        {
+
+            private string sSNField;
+
+            private string sPOUSESSNField;
+
+            private string nAMESHOWNONRETURNField;
+
+            private string aDDRESSField;
+
+            private ushort fORMNUMBERField;
+
+            private string fILINGSTATUSField;
+
+            private string wAGESSALARIESTIPSETCField;
+
+            private string tAXABLEINTERESTINCOMEField;
+
+            private string tAXEXEMPTINTERESTField;
+
+            private string bUSINESSINCOMEORLOSSField;
+
+            private string cAPITALGAINSORLOSSField;
+
+            private string rENTROYALTYPARTNERSHIPESTATEField;
+
+            private string tOTALINCOMEField;
+
+            private string aDJUSTEDGROSSINCOMEField;
+            public string SSN
+            {
+                get
+                {
+                    return this.sSNField;
+                }
+                set
+                {
+                    this.sSNField = value;
+                }
+            }
+            public string SPOUSESSN
+            {
+                get
+                {
+                    return this.sPOUSESSNField;
+                }
+                set
+                {
+                    this.sPOUSESSNField = value;
+                }
+            }
+            public string NAMESHOWNONRETURN
+            {
+                get
+                {
+                    return this.nAMESHOWNONRETURNField;
+                }
+                set
+                {
+                    this.nAMESHOWNONRETURNField = value;
+                }
+            }
+            public string ADDRESS
+            {
+                get
+                {
+                    return this.aDDRESSField;
+                }
+                set
+                {
+                    this.aDDRESSField = value;
+                }
+            }
+            public ushort FORMNUMBER
+            {
+                get
+                {
+                    return this.fORMNUMBERField;
+                }
+                set
+                {
+                    this.fORMNUMBERField = value;
+                }
+            }
+            public string FILINGSTATUS
+            {
+                get
+                {
+                    return this.fILINGSTATUSField;
+                }
+                set
+                {
+                    this.fILINGSTATUSField = value;
+                }
+            }
+            public string WAGESSALARIESTIPSETC
+            {
+                get
+                {
+                    return this.wAGESSALARIESTIPSETCField;
+                }
+                set
+                {
+                    this.wAGESSALARIESTIPSETCField = value;
+                }
+            }
+            public string TAXABLEINTERESTINCOME
+            {
+                get
+                {
+                    return this.tAXABLEINTERESTINCOMEField;
+                }
+                set
+                {
+                    this.tAXABLEINTERESTINCOMEField = value;
+                }
+            }
+            public string TAXEXEMPTINTEREST
+            {
+                get
+                {
+                    return this.tAXEXEMPTINTERESTField;
+                }
+                set
+                {
+                    this.tAXEXEMPTINTERESTField = value;
+                }
+            }
+            public string BUSINESSINCOMEORLOSS
+            {
+                get
+                {
+                    return this.bUSINESSINCOMEORLOSSField;
+                }
+                set
+                {
+                    this.bUSINESSINCOMEORLOSSField = value;
+                }
+            }
+            public string CAPITALGAINSORLOSS
+            {
+                get
+                {
+                    return this.cAPITALGAINSORLOSSField;
+                }
+                set
+                {
+                    this.cAPITALGAINSORLOSSField = value;
+                }
+            }
+            public string RENTROYALTYPARTNERSHIPESTATE
+            {
+                get
+                {
+                    return this.rENTROYALTYPARTNERSHIPESTATEField;
+                }
+                set
+                {
+                    this.rENTROYALTYPARTNERSHIPESTATEField = value;
+                }
+            }
+            public string TOTALINCOME
+            {
+                get
+                {
+                    return this.tOTALINCOMEField;
+                }
+                set
+                {
+                    this.tOTALINCOMEField = value;
+                }
+            }
+            public string ADJUSTEDGROSSINCOME
+            {
+                get
+                {
+                    return this.aDJUSTEDGROSSINCOMEField;
+                }
+                set
+                {
+                    this.aDJUSTEDGROSSINCOMEField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true)]
+        public partial class TaxTranscriptsEIVTAXTRANSCRIPT_V100FORMSECTION
+        {
+
+            private string sECTIONNAMEField;
+
+            private TaxTranscriptsEIVTAXTRANSCRIPT_V100FORMSECTIONSECTIONFIELD[] sECTIONFIELDSField;
+            public string SECTIONNAME
+            {
+                get
+                {
+                    return this.sECTIONNAMEField;
+                }
+                set
+                {
+                    this.sECTIONNAMEField = value;
+                }
+            }
+            [System.Xml.Serialization.XmlArrayItemAttribute("SECTIONFIELD", IsNullable = false)]
+            public TaxTranscriptsEIVTAXTRANSCRIPT_V100FORMSECTIONSECTIONFIELD[] SECTIONFIELDS
+            {
+                get
+                {
+                    return this.sECTIONFIELDSField;
+                }
+                set
+                {
+                    this.sECTIONFIELDSField = value;
+                }
+            }
+        }
+        [System.SerializableAttribute()]
+        [System.ComponentModel.DesignerCategoryAttribute("code")]
+        [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true)]
+        public partial class TaxTranscriptsEIVTAXTRANSCRIPT_V100FORMSECTIONSECTIONFIELD
+        {
+
+            private string fIELDNAMEField;
+
+            private string fIELDVALUEField;
+            public string FIELDNAME
+            {
+                get
+                {
+                    return this.fIELDNAMEField;
+                }
+                set
+                {
+                    this.fIELDNAMEField = value;
+                }
+            }
+            public string FIELDVALUE
+            {
+                get
+                {
+                    return this.fIELDVALUEField;
+                }
+                set
+                {
+                    this.fIELDVALUEField = value;
+                }
+            }
+        }
+
+
+    }
+}
+
+
+--- FILE: CRSLib\CRSLib\Utils.cs ---
+namespace Xml2CSharp
+{
+	public static class Utils
+	{
+
+		public static string GenerateXMLSubmitTaxPullRequest(string first_name, string middle_name,string last_name, string ssn, string first_name_co, string last_name_co, string ssn_co,string address,string city,string zip,string state,string pdf_4506)
+		{
+            string xml = File.ReadAllText(@"TAX_1040_OrderNew_Individual.xml"); 
+            XmlSerializer serializer = new XmlSerializer(typeof(CRSLib.TaxOrderRequest.MESSAGE));
+			CRSLib.TaxOrderRequest.MESSAGE tax = null;
+			string result = null;
+
+			
+            using (StringReader reader = new StringReader(xml))
+			{
+				tax = (CRSLib.TaxOrderRequest.MESSAGE) serializer.Deserialize(reader);
+
+				
+				
+				
+				
+				
+
+				Byte[] bytes = File.ReadAllBytes(pdf_4506);
+				string file = Convert.ToBase64String(bytes);
+				tax.DOCUMENT_SETS.DOCUMENT_SET.DOCUMENTS.DOCUMENT.VIEWS.VIEW.VIEW_FILES.VIEW_FILE.FOREIGN_OBJECT.EmbeddedContentXML = file;
+
+				
+				
+				
+				
+				
+
+				
+				
+				
+				
+				
+				
+				
+				
+
+
+				tax.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.INDIVIDUAL.NAME.FirstName = first_name;
+                tax.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.INDIVIDUAL.NAME.MiddleName = middle_name;
+                tax.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.INDIVIDUAL.NAME.LastName = last_name;
+				tax.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.ROLES.ROLE.BORROWER.RESIDENCES.RESIDENCE.ADDRESS.AddressLineText = address;
+				tax.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.ROLES.ROLE.BORROWER.RESIDENCES.RESIDENCE.ADDRESS.CityName = city;
+				tax.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.ROLES.ROLE.BORROWER.RESIDENCES.RESIDENCE.ADDRESS.PostalCode = zip;
+				tax.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.ROLES.ROLE.BORROWER.RESIDENCES.RESIDENCE.ADDRESS.StateCode = state;
+				tax.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.TAXPAYER_IDENTIFIERS.TAXPAYER_IDENTIFIER.TaxpayerIdentifierValue = ssn;
+
+                tax.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.SERVICE_PRODUCT.SERVICE_PRODUCT_REQUEST.SERVICE_PRODUCT_DETAIL.EXTENSION.OTHER.SERVICE_PREFERRED_RESPONSE_FORMATS.SERVICE_PREFERRED_RESPONSE_FORMAT.SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL.PreferredResponseFormatType = "Xml";
+
+            }
+			if (null != tax)
+			{
+				using (StringWriter textWriter = new StringWriter())
+				{
+					serializer.Serialize(textWriter,tax);
+					result = textWriter.ToString().Replace("utf-16","utf-8");
+				}
+
+			}
+			return result;			
+        }
+		public static string PullOrderedCreditRequest(int file_num, string first_name, string middle_name,string last_name, string ssn, string first_name_co, string last_name_co, string ssn_co, bool pull_pdf, bool pull_html)
+		{
+            string xml = File.ReadAllText(@"PullExistingCR.xml");
+            XmlSerializer serializer = new XmlSerializer(typeof(Xml2CSharp.RetrieveCreditPullRequest.MESSAGE));
+            Xml2CSharp.RetrieveCreditPullRequest.MESSAGE request = null;
+
+            XmlSerializer serializer_test = new XmlSerializer(typeof(CRSLib.JointRetrieve.MESSAGE));
+
+            CRSLib.JointRetrieve.MESSAGE req_test = null;
+            using (StringReader reader_test = new StringReader(xml))
+            {
+                req_test = (CRSLib.JointRetrieve.MESSAGE)serializer_test.Deserialize(reader_test);
+                req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.SERVICE_PRODUCT_FULFILLMENT.SERVICE_PRODUCT_FULFILLMENT_DETAIL.VendorOrderIdentifier = file_num.ToString();
+
+                var files = req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.SERVICE_PRODUCT.SERVICE_PRODUCT_REQUEST.SERVICE_PRODUCT_DETAIL.EXTENSION.OTHER.SERVICE_PREFERRED_RESPONSE_FORMATS.SERVICE_PREFERRED_RESPONSE_FORMAT;
+                if (!pull_html)
+                {
+                    files.Remove(files[0]);
+                }
+
+                if (!pull_pdf)
+                {
+                    int which = 1;
+                    if (!pull_html)
+                        which = 0;
+                    files.Remove(files[which]);
+                }
+
+
+                req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY[0].INDIVIDUAL.NAME.FirstName = first_name;
+                req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY[0].INDIVIDUAL.NAME.MiddleName = middle_name;
+                req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY[0].INDIVIDUAL.NAME.LastName = last_name;
+                req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY[0].TAXPAYER_IDENTIFIERS.TAXPAYER_IDENTIFIER.TaxpayerIdentifierValue = ssn;
+                if (null != first_name_co)
+                {
+                    req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY[1].INDIVIDUAL.NAME.FirstName = first_name_co;
+                    req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY[1].INDIVIDUAL.NAME.LastName = last_name_co;
+                    req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY[1].TAXPAYER_IDENTIFIERS.TAXPAYER_IDENTIFIER.TaxpayerIdentifierValue = ssn_co;
+                }
+                else
+                    req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.Remove(req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY[1]);
+            }
+            using (StringReader reader = new StringReader(xml))
+            {
+                request = (Xml2CSharp.RetrieveCreditPullRequest.MESSAGE)serializer.Deserialize(reader);
+                request.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.INDIVIDUAL.NAME.FirstName = first_name;
+                request.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.INDIVIDUAL.NAME.LastName = last_name;
+                request.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.SERVICE_PRODUCT_FULFILLMENT.SERVICE_PRODUCT_FULFILLMENT_DETAIL.VendorOrderIdentifier = file_num.ToString();
+                request.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.TAXPAYER_IDENTIFIERS.TAXPAYER_IDENTIFIER.TaxpayerIdentifierValue = ssn;
+
+
+            }
+
+
+            string xml_final = null;
+            System.Xml.Serialization.XmlSerializer writer = new System.Xml.Serialization.XmlSerializer(typeof(Xml2CSharp.RetrieveCreditPullRequest.MESSAGE));
+            System.Xml.Serialization.XmlSerializer writer_test = new System.Xml.Serialization.XmlSerializer(typeof(CRSLib.JointRetrieve.MESSAGE));
+
+            var path = Path.GetTempFileName() + ".xml";
+            TextWriter txtWriter = new StreamWriter(path);
+            writer.Serialize(txtWriter, request);
+            txtWriter.Close();
+
+
+
+            TextWriter txtWriter_test = new StreamWriter(path);
+            writer_test.Serialize(txtWriter_test, req_test);
+            txtWriter_test.Close();
+            xml_final = File.ReadAllText(path);
+
+            return xml_final;
+        }
+        public static string RetrieveTaxPullResults(int file_num,string first_name,string middle_name, string last_name,string ssn,string first_name_co, string middle_name_co, string last_name_co,string ssn_co,bool pull_pdf,bool pull_html)
+        {
+			
+			string xml = File.ReadAllText(@"TAX_RetrieveExisting_Person.xml");
+			XmlSerializer serializer = new XmlSerializer(typeof(CRSLib.TaxPullRequest.MESSAGE));
+			CRSLib.TaxPullRequest.MESSAGE request = null;
+
+			XmlSerializer serializer_test = new XmlSerializer(typeof(CRSLib.TaxPullRequest.MESSAGE));
+
+			CRSLib.TaxPullRequest.MESSAGE req_test = null;
+			using (StringReader reader_test = new StringReader(xml))
+            {
+				req_test = (CRSLib.TaxPullRequest.MESSAGE)serializer_test.Deserialize(reader_test);
+				req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.SERVICE_PRODUCT_FULFILLMENT.SERVICE_PRODUCT_FULFILLMENT_DETAIL.VendorOrderIdentifier = file_num.ToString();
+
+				var files = req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.SERVICE_PRODUCT.SERVICE_PRODUCT_REQUEST.SERVICE_PRODUCT_DETAIL.EXTENSION.OTHER.SERVICE_PREFERRED_RESPONSE_FORMATS.SERVICE_PREFERRED_RESPONSE_FORMAT;
+				
+				
+				
+				
+
+				
+    
+				
+				
+				
+				
+    
+					
+				
+				req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.INDIVIDUAL.NAME.FirstName = first_name;
+                req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.INDIVIDUAL.NAME.MiddleName = middle_name;
+                req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.INDIVIDUAL.NAME.LastName = last_name;
+				req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.TAXPAYER_IDENTIFIERS.TAXPAYER_IDENTIFIER.TaxpayerIdentifierValue = ssn;
+				req_test.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.SERVICE_PRODUCT.SERVICE_PRODUCT_REQUEST.SERVICE_PRODUCT_DETAIL.EXTENSION.OTHER.SERVICE_PREFERRED_RESPONSE_FORMATS.SERVICE_PREFERRED_RESPONSE_FORMAT.SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL.PreferredResponseFormatType = "Xml";
+				
+				
+				
+				
+				
+				
+				
+				
+			}
+			using (StringReader reader = new StringReader(xml))
+			{
+				request = (CRSLib.TaxPullRequest.MESSAGE)serializer.Deserialize(reader);
+				request.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.INDIVIDUAL.NAME.FirstName = first_name;
+				request.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.INDIVIDUAL.NAME.LastName = last_name;
+				request.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.SERVICE_PRODUCT_FULFILLMENT.SERVICE_PRODUCT_FULFILLMENT_DETAIL.VendorOrderIdentifier = file_num.ToString();
+				request.DEAL_SETS.DEAL_SET.DEALS.DEAL.PARTIES.PARTY.TAXPAYER_IDENTIFIERS.TAXPAYER_IDENTIFIER.TaxpayerIdentifierValue = ssn;
+
+
+			}
+
+
+			string xml_final = null;
+			System.Xml.Serialization.XmlSerializer writer =new System.Xml.Serialization.XmlSerializer(typeof(CRSLib.TaxPullRequest.MESSAGE));
+			System.Xml.Serialization.XmlSerializer writer_test = new System.Xml.Serialization.XmlSerializer(typeof(CRSLib.TaxPullRequest.MESSAGE));
+
+			var path = Path.GetTempFileName() + ".xml";
+			TextWriter txtWriter = new StreamWriter(path);
+			writer.Serialize(txtWriter, request);
+			txtWriter.Close();
+			xml_final = File.ReadAllText(path);
+
+
+
+			TextWriter txtWriter_test = new StreamWriter(path);
+			writer_test.Serialize(txtWriter_test, req_test);
+			txtWriter_test.Close();
+			xml_final = File.ReadAllText(path);
+
+			
+			
+			
+			
+
+			
+			
+			
+			
+			
+			
+			
+
+			return xml_final;	
+		}
+	}
+}
+
+
+--- FILE: CRSAPI\CRSAPI\Program.cs ---
+namespace CRSAPI
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string url = "https:
+            var request = (HttpWebRequest)WebRequest.Create(url);
+
+            var postData = "username=" + Uri.EscapeDataString("myUser");
+            postData += "&password=" + Uri.EscapeDataString("myPassword");
+            var data = Encoding.ASCII.GetBytes(postData);
+
+            request.Method = "POST";
+            request.ContentType = "application/x-www-form-urlencoded";
+            request.ContentLength = data.Length;
+
+            using (var stream = request.GetRequestStream())
+            {
+                stream.Write(data, 0, data.Length);
+            }
+
+            var response = (HttpWebResponse)request.GetResponse();
+        }
+    }
+}
+
+
+--- FILE: CRSAPI\CRSAPI\Properties\AssemblyInfo.cs ---
+[assembly: AssemblyTitle("CRSAPI")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("CRSAPI")]
+[assembly: AssemblyCopyright("Copyright ©  2021")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+
+
+
+[assembly: ComVisible(false)]
+
+
+[assembly: Guid("ea9dcfda-d7a2-4754-a13d-c51804ca6e25")]
+
+
+
+
+
+
+
+
+
+
+
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
+
+--- FILE: CRS\CRS\Program.cs ---
+namespace CRS
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+
+            
+            
+            
+            
+            
+            string server = "uam_reporting";
+
+            
+            var user = "unlockapi";
+            var pass = "185h6n18";
+            var mcl = "UnlockArv08122021";
+            var url = "https:
+
+            int file_num = 2407804;
+
+            
+            DataTable inputs = BadgerLib.Credit.GetCreditInputs(server, file_num);
+
+            CRSService crs = new CRSService(url, user, pass,mcl);
+            crs.Login();
+            foreach (DataRow row in inputs.Rows)
+            {
+                crs.RetrieveOrder(row);
+            }
+
+
+
+
+            
+
+            
+            
+            
+            
+
+            
+
+            
+            
+            
+            
+        }
+    }
+}
+
+
+--- FILE: CRS\CRS\Properties\AssemblyInfo.cs ---
+[assembly: AssemblyTitle("CRS")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("CRS")]
+[assembly: AssemblyCopyright("Copyright ©  2021")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+
+
+
+[assembly: ComVisible(false)]
+
+
+[assembly: Guid("b13a6778-dd68-4280-8048-2406f0919a83")]
+
+
+
+
+
+
+
+
+
+
+
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
+
+--- FILE: CRSRunner\CRSRunner\Class1.cs ---
+namespace CRSRunner
+{
+    public class Class1
+    {
+    }
+}
+
+
+--- FILE: CRSRunner\CRSRunner\Properties\AssemblyInfo.cs ---
+[assembly: AssemblyTitle("CRSRunner")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("CRSRunner")]
+[assembly: AssemblyCopyright("Copyright ©  2023")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+
+
+
+[assembly: ComVisible(false)]
+
+
+[assembly: Guid("c6987e19-7c6b-4383-bb1d-d2b80a06a113")]
+
+
+
+
+
+
+
+
+
+
+
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]

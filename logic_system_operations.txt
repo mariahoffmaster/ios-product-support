@@ -1,0 +1,306 @@
+=== BADGER KB: LOGIC — SETTLEMENTS ===
+Responsible Department: Investment Operations
+Last Updated: May 2026
+============================================================
+
+OVERVIEW
+--------
+A settlement occurs when a homeowner (customer) pays off or exits their HEA. Settlement
+funds are wired to the UF2 Collections account (x3844) at Texas Capital Bank (TCB).
+Investment Operations monitors the #settlement_queue Slack channel for incoming wire
+notifications, then processes each settlement through the Settlement Quick Publisher tool
+(SettlementQuickPublish - JPM_Formatted.xlsm).
+
+After processing, a Suntera notification email is sent, MAX is updated, and journal entries
+are inserted into the dbo.Trades table. Monthly, settlements are reconciled and fees
+are calculated per investor agreement.
+
+
+KEY ACCOUNTS
+------------
+- UF2 Collections Account — TCB x3844. Receives all incoming settlement wires.
+- JPM Omnibus Collections Account — JPMorgan Chase. Used for customer refund checks.
+- JPM UAM Account — Pre-funded JPMorgan account used to send refund checks.
+- Investor Trust Holdings Accounts — Where exercise value + settlement fee + lien release
+  fee are swept within 2 BD of settlement receipt.
+
+
+KEY SYSTEMS AND TOOLS
+---------------------
+- Settlement Quick Publisher — Excel file at:
+  Asset Management - Documents\05 - Initiatives\Settlement Quick Publisher\
+  SettlementQuickPublish - JPM_Formatted.xlsm
+  Contains: Paintbrush Button (clear), Wire Transfer Button, Email Man Button,
+  Wire-Trades Tab (for Slack notification copy), Month-of tabs (one per month).
+- Settlement Calculator — Flags underpayments. Do not process until full amount received.
+- Badger — Used to look up Asset ID by other identifiers when missing from notification.
+- SQL client (TOAD or SSMS) — Used for TCB bank transaction queries and journal inserts.
+
+
+KEY TABLES AND STORED PROCEDURES
+---------------------------------
+- dbo.Trades — Receives journal entries for each settlement. Fields: ASSET_ID, OFACE,
+  ACCOUNT_ID, BUY_SELL, COUNTERPARTY_ID, TRADE_DATE, SETTLE_DATE, PRICE.
+- dbo.SettlementTrans — Receives outgoing BANKTRANS IDs from Collections transfers.
+  Populated via =SQL.Insert("SettlementTrans",) function from UnlockToolkit.
+- dbo.Fundings_New — Settlement cancellations update fundingstatus_id to 4 (Cancelled).
+- dbo.REO — Updated with reo_settlement_date, reo_net_proceeds, reo_home_sale_price
+  for REO (Real Estate Owned) disposition settlements.
+- EXEC GetTCBBankTrans [amount] — Stored proc to retrieve TCB Bank Transaction IDs
+  (tcbinv_id / tcb_banktrans_id) by dollar amount. Used for underpayment processing.
+- EXEC dbo.ResetSettlement '[asset_id]' — Deletes/cancels a previously processed settlement.
+- EXEC ProcessAssetFailedToClose '[asset_id]' — Standard funded asset cancellation.
+- EXEC ProcessAssetFailedToClose '[asset_id]', 1 — Cancellation for Right of Rescission
+  (sets uwissue_id = 6).
+
+
+KEY TERMINOLOGY
+---------------
+- settlement_type — The type of settlement (e.g., standard sale, Unlock Refinance, REO).
+- settlement_reason — Reason for the settlement.
+- settlement_account — Account receiving settlement proceeds.
+- net_settlement_payment — The net amount received in a settlement.
+- final_disposition_date — Date the deal was finally settled/disposed.
+- BANKTRANS_ID / tcbinv_id — TCB Bank Transaction ID. Links bank wire to Badger records.
+  Required for the Month-of Settlement tab and Badger Cash Transactions entry.
+- Unlock Settlement Fee — $500 per settlement (waived for Unlock Refinances).
+- Lien Release Fee — $75 per settlement.
+- Exercise Value — The investor's share of the settlement proceeds per the HEA terms.
+- Unlock Refinance — A refinance originated by Unlock. Settlement fee is waived.
+- Underpayment — When customer wires less than the full settlement amount.
+- Right of Rescission — Homeowner cancels within the legal rescission window.
+
+
+STANDARD SETTLEMENT PROCESSING
+--------------------------------
+Trigger: Notification appears in #settlement_queue Slack channel when a wire is processed.
+
+1. Monitor #settlement_queue for new settlement notifications.
+
+2. Identify required inputs:
+   - Asset ID (if missing, use Badger to locate via other identifiers such as name, address,
+     file number).
+   - Wire Amount.
+
+3. Open Settlement Quick Publisher. Click Paintbrush Button to clear prior data.
+   File path: Asset Management - Documents\05 - Initiatives\Settlement Quick Publisher\
+   SettlementQuickPublish - JPM_Formatted.xlsm
+
+4. Enter settlement data:
+   - Verify closing date is accurate.
+   - Enter Asset ID. Name, address, and original investment amount auto-populate in ~10–15 sec.
+   - Enter Wire Amount.
+   - Click Wire Transfer Button. Remaining fields auto-populate.
+   - Note: Settlement fee = $500 (waived for Unlock Refinances). Lien release fee = $75.
+
+5. Handle atypical cases:
+   - If any populated columns look off, investigate and/or escalate before proceeding.
+
+6. Click Email Man Button:
+   - Drafts email to Suntera for transfer/refund.
+   - Updates MAX database.
+   - Excel pop-up confirms success.
+
+7. Slack notification:
+   - Auto-navigated to the Wire-Trades tab. Copy the message and post to #settlements channel.
+   - React to the original message in #settlement_queue to confirm processing.
+
+8. Refunds:
+   - Refunds populate in a separate spreadsheet used by Accounting.
+   - Confirm that information has been populated. Entry point:
+     ProcessOldestIncomingSettlementWire (excludes the latest settlement in the queue).
+
+
+CUSTOMER REFUND FLOW OF FUNDS
+------------------------------
+When a customer's settlement results in an overpayment or refund:
+1. Settlement funds wire from customer to TCB Omnibus Collections (x3844).
+2. Within 2 BD: InvOps sweeps exercise value + settlement fee + lien release fee to
+   investor trust holdings account. (These fees are recouped via remittance at month end.)
+3. The overpayment amount is moved to UAM TCB account; simultaneously, the same amount is
+   transferred from the pre-funded JPM UAM account to JPM Omnibus Collections.
+4. Refund check is sent from JPM Omnibus account to customer.
+5. JPM UAM account is periodically pre-funded to maintain balance for sending refunds.
+
+
+UNDERPAYMENT PROCESSING
+------------------------
+Overview: If a regular underpayment occurs, notify Christine D and hold off on processing
+the settlement until the underpayment is received. Once full amount received, manually
+add both transactions to Badger.
+
+1. Process the settlement using the FULL amount (initial wire + underpayment).
+   Enter the sum into the Wire Amount Overwrite field on the Settlement Quick Publisher.
+   The Settlement Calculator will flag underpayments; do not process until actual
+   underpayment is received.
+
+2. After settlement is processed, retrieve the TCB Bank Trans IDs using:
+   EXEC GetTCBBankTrans [amount1]
+   EXEC GetTCBBankTrans [amount2]
+   (Run one for the original wire amount and one for the underpayment amount.)
+
+3. Include the BANKTRANS_ID in the first column of the Month-of Settlement processed tab
+   in the Settlement Quick Publisher.
+
+4. Make Badger entry:
+   - Search settlement in Badger → navigate to Settlement tab.
+   - Select Cash Transactions tab → Edit Grid → Paste BANKTRANS_ID.
+   - Transaction Type = Incoming Wire.
+   - Note = "Underpayment received".
+
+5. Post message in #refunds Slack channel:
+   "Underpayment Received - Asset ID: [id] - Name: [name] - Amount: $[amount]"
+
+Unlock Refinance underpayment: Waive underpayment — inform Servicing, get OK to waive.
+Move money to Collections to cover underpayment; instruct Accounting to transfer.
+
+All Other Settlement Types: Do not process until all funds received. If approval from
+Servicing to waive underpayment, same step as Unlock Refi — move money to Collections.
+
+
+SETTLEMENTS WITHOUT COLLECTIONS MAPPING
+-----------------------------------------
+Overview: Periodic process to map outgoing BANKTRANS IDs for settlements that do not yet
+have corresponding Collections transfers recorded.
+
+Trigger: Monitor Badger for email with subject "Settlements without Collections Transfers".
+
+Steps:
+1. From the spreadsheet attached to the email, select columns L–O (including headers).
+2. Use =SQL.Insert("SettlementTrans",) in Excel to generate insert statements.
+3. Navigate to the generated file path and execute the SQL.
+4. After DB is updated, update the Settlement Quick Publisher with the outgoing BANKTRANS IDs
+   from the Collections Transfer file using a VLOOKUP.
+   Outgoing banktrans_ids are mapped in the corresponding Month-of tab.
+
+
+DELETING / CANCELLING A SETTLEMENT
+------------------------------------
+Use this stored procedure to delete a previously processed settlement:
+  EXEC dbo.ResetSettlement '[asset_id]'
+
+After running the stored proc:
+1. Delete the record from the Month-of tab in the Settlement Quick Publisher.
+2. Delete from the Tracker sheet.
+3. Confirm in #Badger_Ops Slack channel — state that stored proc was used and why.
+
+
+SETTLEMENTS JOURNALING
+-----------------------
+Overview: Journal entries for closed settlements must be inserted into dbo.Trades.
+Badger sends a daily email (subject: "Assets Needing Close Out Journal Entries") with an
+attached Excel file for any assets requiring close-out journal entries. This email recurs
+daily for the prior month's settlements until all are cleared.
+
+Steps:
+1. Find email with subject "Assets Needing Close Out Journal Entries".
+2. Open the attached .xls file.
+3. Change cell K2 to General type (otherwise the SQL.Insert function will not work).
+4. In cell K2, enter:
+   =SQL.Insert("Trades", L1:S2)
+   where the range must include the header row through the full data range.
+   This uses the UnlockToolkit function to generate INSERT statements for dbo.Trades.
+   If there are enough records, it will output them to a file and show the file path.
+
+   Example output:
+   insert into Trades ([ASSET_ID],[OFACE],[ACCOUNT_ID],[BUY_SELL],[COUNTERPARTY_ID],
+   [TRADE_DATE],[SETTLE_DATE],[PRICE]) values ('10957325119729',55808,16,'S',0,
+   '12/15/2024 12:00:00 AM','11/30/2024 12:00:00 AM',139.642864822248)
+
+5. Put the insert statements in a SQL client and execute against the UAM database.
+
+
+PROCESS MONTHLY SETTLEMENTS
+-----------------------------
+Monthly settlement reconciliation steps:
+- Calculate settlement fees per investor agreement.
+- Send settlement fees from Omnibus to UPS as revenue.
+- Reconcile against bank settlements received.
+
+
+REO SALE PROCESSING
+--------------------
+REO (Real Estate Owned) sales occur when an asset is auctioned following foreclosure.
+Settlement proceeds from the REO sale are posted to the x8972 Collections account at TCB.
+
+1. Confirm funds have hit the x8972 Collections account in TCB.
+
+2. Email Billing and Daisy requesting them to move funds from x8972 Collections into the
+   appropriate investor account. Include a screenshot of the settlement receipt notification.
+
+3. Update the REO table using the following SQL (substitute actual asset_id and values):
+
+   UPDATE REO
+   SET reo_settlement_date = 'YYYY-MM-DD'
+   WHERE asset_id = '[asset_id]'
+
+   UPDATE REO
+   SET reo_net_proceeds = [net_proceeds_amount]
+   WHERE asset_id = '[asset_id]'
+
+   UPDATE REO
+   SET reo_home_sale_price = [home_sale_price]
+   WHERE asset_id = '[asset_id]'
+
+   Field mappings from the Asset Auctioned V.2 Tracker:
+   - reo_settlement_date = REO Dispo/Settlement Date
+   - reo_net_proceeds = REO Settlement Amount (Net Proceeds)
+   - reo_home_sale_price = REO Home Sale Price
+
+4. Inform Justin Burke.
+
+
+FUNDED ASSET CANCELLATION
+--------------------------
+Purpose: Process a cancellation for an asset that was funded but must be reversed.
+Triggered by post-closing requesting cancellation. Funds must be wired back to
+UF2 Collections account (x3844) by title company or customer.
+
+Wire return instructions (for communicating to title/customer):
+  Bank: Texas Capital Bank
+  ABA: 111017979
+  Account Number: 2400053844
+  Account Name: UF2 Collections Account
+
+Step 1: Check if asset has been traded.
+  SELECT * FROM dbo.Trades WHERE asset_id = '[asset_id]'
+  If traded to a trust, STOP. Confirm next steps with team in #ninja_life.
+
+Step 2: Run stored procedure (handles most steps automatically).
+  Standard cancellation:
+    EXEC ProcessAssetFailedToClose '[asset_id]'
+  Right of Rescission (sets uwissue_id = 6):
+    EXEC ProcessAssetFailedToClose '[asset_id]', 1
+
+Step 3: Notify counterparties.
+  - Email TCB at HEA_Loans@texascapitalbank.com — confirm funds received back to x3844,
+    request removal from the warehouse line. Include asset ID, address, amount, reason.
+  - Forward to Suntera (unlock@suntera.com, cc billing@unlock.com).
+  - Forward to WSFS (custodygroup@wsfsbank.com).
+  - Post confirmation in #Ninja-Life and #Post-Closing Slack channels.
+
+Manual steps if stored proc fails:
+  1. Mark Fundings_New status as Cancelled (fundingstatus_id = 4):
+     UPDATE Fundings_New SET fundingstatus_id = 4 WHERE asset_id = '[asset_id]'
+
+  2. Delete journal entries from Trades:
+     DELETE FROM Trades WHERE asset_id = '[asset_id]'
+
+  3. Set Underwriting Issue:
+     Standard Failed to Close (uwissue_id = 5):
+       UPDATE Underwriting SET uwissue_id = 5 WHERE asset_id = '[asset_id]'
+     Right of Rescission (uwissue_id = 6):
+       UPDATE Underwriting SET uwissue_id = 6 WHERE asset_id = '[asset_id]'
+
+
+MARGIN CALL PROCESSING
+-----------------------
+TCB sends an email notification when a margin call is triggered.
+Margin calls occur when an asset has been on the warehouse line for >30 days,
+then again at day 45 and day 60.
+
+Steps:
+1. Verify the call amount against the collateral tab.
+2. Log into TCB → Activity Center → Funds Transfer.
+   Transfer the required amount from UPS (x0292) to UF2 Collections (x3844).
+3. Inform TCB that the amount has been transferred.

@@ -1,0 +1,1601 @@
+=== BADGER KB: CREDIT_ANALYSIS ===
+CreditLib: credit reports, scores, alerts, inquiries, tax
+============================================================
+
+
+
+--- FILE: CreditLib\Alerts.cs ---
+namespace CreditLib
+{
+    public class AlertsLib
+    {
+        public static bool AlertExists(string server, int creditfile_id)
+        {
+            string sql = "select * from CRAlerts c where c.CREDITFILE_ID = @creditfile_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            return q.ExecuteTable().Rows.Count > 0;
+        }
+
+        public static void DeleteAlerts(string server, int creditfile_id)
+        {
+            string sql = "delete from CRAlerts where creditfile_id = @creditfile_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            q.Execute();
+        }
+
+        public static void InsertAlert(string server,int creditfile_id,string message,string type,string type_description,bool adverse,string category,int? sequence_id)
+        {
+            string sql = "insert into CRAlerts (creditfile_id,message,type,type_description,adverse,category,sequence_id) values (@creditfile_id,@message,@type,@type_description,@adverse,@category,@sequence_id)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            q.AddParameter("@message", message);
+            q.AddParameter("@type", type);
+            q.AddParameter("@type_description", type_description);
+            q.AddParameter("@adverse", adverse);
+            q.AddParameter("@category", category);
+            q.AddParameter("@sequence_id", sequence_id);
+            q.Execute();
+        }
+
+
+    }
+    public class Alert
+    {
+        public string message;
+        public string type;
+        public string type_description;
+        public string category;
+        public bool adverse;
+        public int? tradeline_sequence_id;
+    }
+}
+
+
+--- FILE: CreditLib\Applicants.cs ---
+namespace CreditLib
+{
+    public class ApplicantLib
+    {
+        public static int? ApplicantLookup(string server, int creditfile_id,int last_4ssn)
+        {
+            string sql = "exec dbo.CreditApplicantLookup @creditfile_id=@creditfile_id,@last_4ssn=@last_4ssn";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            q.AddParameter("@last_4ssn", last_4ssn);
+            return q.ExecuteSingle<int>();
+        }
+
+    }
+}
+
+
+--- FILE: CreditLib\Comments.cs ---
+namespace CreditLib
+{
+    public class CommentsLib
+    {
+        public static bool CommentsExists(string server, int creditfile_id)
+        {
+            string sql = "select * from CRComments c where c.CREDITFILE_ID = @creditfile_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            return q.ExecuteTable().Rows.Count > 0;
+        }
+
+        public static void DeleteComments(string server, int creditfile_id)
+        {
+            string sql = "delete from CRComments where creditfile_id = @creditfile_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            q.Execute();
+        }
+
+        public static void InsertComment(string server,int creditfile_id,string comment,string comment_type,string comment_type_other,string bureau,int? tradeline_sequence_id)
+        {
+            string sql = "insert into CRComments (creditfile_id,comment,comment_type,comment_type_other,bureau,tradeline_sequence_id) values (@creditfile_id,@comment,@comment_type,@comment_type_other,@bureau,@tradeline_sequence_id)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            q.AddParameter("@comment", comment);
+            q.AddParameter("@comment_type", comment_type);
+            q.AddParameter("@comment_type_other", comment_type_other);
+            q.AddParameter("@bureau", bureau);
+            q.AddParameter("@tradeline_sequence_id", tradeline_sequence_id);
+            q.Execute();
+        }
+
+
+    }
+    public class Comment
+    {
+        public string bureau;
+        public string comment_type_other;
+        public string comment_type;
+        public string comment;
+        public int? tradeline_sequence_id;
+    }
+}
+
+
+--- FILE: CreditLib\CreditReport.cs ---
+namespace CreditLib
+{
+    public class CreditReport
+    {
+
+        public int creditfile_id;
+        public DateTime pull_date;
+        public string status;
+        public string status_description;
+        public List<Creditor> creditors = new List<Creditor>();
+        public List<Inquiries> inquires = new List<Inquiries>();
+        public List<Comment> comments = new List<Comment>();
+        public List<Alert> alerts = new List<Alert>();
+        public List<Scores.CRScores> scores = new List<Scores.CRScores>();
+        public List<XMLFile> files = new List<XMLFile>();
+        
+        public Dictionary<string, bool> role_map = new Dictionary<string, bool>();
+        public Dictionary<string, string> crs_map = new Dictionary<string, string>();
+        public Dictionary<string, string> tlc_map = new Dictionary<string, string>();
+        public string raw_xml;
+        public string error;
+
+        public string html
+        {
+            get
+            {
+                var html_file = files.Where(n => n.mime_type_id == "text/html");
+                if (html_file.Count() == 0)
+                    return null;
+                string html = html_file.Single().raw;
+                return html;
+            }
+        }
+
+        public string pdf
+        {
+            get
+            {
+                var html_file = files.Where(n => n.mime_type_id == "application/pdf");
+                if (html_file.Count() == 0)
+                    return null;
+                return html_file.Single().raw;
+            }
+        }
+
+
+        public void SyncAll(string server)
+        {
+            bool exists = this.CreditFileExists(server, this.creditfile_id);
+            int load_id_tmp = Database.Common.GetNextId(server, "credit_load_id");
+            if (!exists)
+            {
+                CreditLib.Load.CreateNewLoadId(server, load_id_tmp, this.pull_date, null, true);
+                this.InsertCreditFile(server, this.creditfile_id, load_id_tmp);
+             }
+            Task a = Task.Run(() => { SyncTradeLines(server); });
+            Task b = Task.Run(() => { SyncScores(server); });
+            Task c = Task.Run(() => { SyncInquiries(server); });
+            Task d = Task.Run(() => { SyncComments(server); });
+            Task e = Task.Run(() => { SyncAlerts(server); });
+            Task.WaitAll(a, b, c, d, e);
+            CreditLib.Load.ProcessCreditLoadNEW(server, load_id_tmp, this.creditfile_id);
+        }
+
+        
+        public async void SyncComments(string server)
+        {
+            bool exists = CreditLib.CommentsLib.CommentsExists(server, this.creditfile_id);
+            if (exists)
+                CreditLib.CommentsLib.DeleteComments(server, creditfile_id);
+            foreach (var i in comments)
+            {
+                CreditLib.CommentsLib.InsertComment(server, creditfile_id, i.comment,i.comment_type,i.comment_type_other,i.bureau,i.tradeline_sequence_id);
+            }
+        }
+
+        public async void SyncAlerts(string server)
+        {
+            bool exists = CreditLib.AlertsLib.AlertExists(server, this.creditfile_id);
+            if (exists)
+                CreditLib.AlertsLib.DeleteAlerts(server, creditfile_id);
+            foreach (var i in alerts)
+            {
+                CreditLib.AlertsLib.InsertAlert(server, creditfile_id, i.message, i.type, i.type_description, i.adverse, i.category, i.tradeline_sequence_id);
+            }
+        }
+
+        public async void SyncInquiries(string server)
+        {
+            bool exists = CreditLib.InquiryLib.InquiryExists(server, this.creditfile_id);
+            if (exists)
+                CreditLib.InquiryLib.DeleteInquiries(server, creditfile_id);
+            foreach (var i in inquires)
+            {
+                CreditLib.InquiryLib.InsertInquiries(server, creditfile_id, i.bureau, i.pull_date, i.creditor, i.credittype_id,i.credit_business_type,i.credit_business_type_detail);
+            }
+        }
+
+        public bool CreditFileExists(string server,int credit_file_id)
+        {
+            string sql = "select * from vCreditFiles cf where cf.creditfile_id = @credit_file_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@credit_file_id", credit_file_id);
+            return q.ExecuteTable().Rows.Count == 1;
+        }
+
+        public void InsertCRFileIfNotPresent(string server, int creditfile_id,int load_id,DateTime asOf)
+        {
+            bool exists = CreditFileExists(server, creditfile_id);
+            if(!exists)
+                InsertCreditFile(server,creditfile_id,load_id);
+        }
+        public void InsertCreditFile(string server, int credit_file_id, int? load_id) 
+        {
+            string sql = "insert into CreditFiles (id,load_id,applicant_id,applicant_co_id,asOf,crrequesttype_id,crqueue_id) select filenum,@load_id,applicant_id,applicant_co_id,asOf,requesttype_id,crqueue_id from vCRQueue c where c.filenum = @creditfile_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", credit_file_id);
+            q.AddParameter("@load_id", load_id);
+            
+            q.ExecuteTable();
+        }
+        public void SyncScores(string server)
+        {
+            
+            bool exists = CreditLib.Scores.CRScoresExist(server, creditfile_id);
+            if (exists)
+                CreditLib.Scores.DeleteScores(server, creditfile_id);
+            foreach(var s in scores)
+            {
+                
+                int creditscore_id = CreditLib.Scores.InsertScores(server, creditfile_id, s.applicant_id, s.score, s.asof, s.model_id, s.rank_pct,s.score_raw);
+                
+                
+                foreach (var f in s.factors)
+                {
+                    CreditLib.CreditScoreFactors.CreditFactorInsertUpdate(server, f.factor_code, f.factor_text);
+
+
+                    
+                    bool exists_factor = CreditLib.CreditScoreFactors.CRScoreFactorExists(server, creditscore_id);
+                    if (exists_factor)
+                        CreditLib.CreditScoreFactors.DeleteCRScoreFactors(server, creditscore_id);
+
+                    CreditLib.CreditScoreFactors.InsertCRScoreFactor(server, creditscore_id, f.factor_code);
+                }
+
+                
+
+
+            }
+        }
+
+
+        public int GetCRAccountIDAndInsertIfNot(string server, string creditor_account_id, double high_credit_or_limit, string acct_type, DateTime? date_opened, double? monthly_payment)
+        {
+            int craccount_id = GetCRAccountID(server,creditor_account_id,high_credit_or_limit,acct_type,date_opened,monthly_payment);
+            bool exists = CRAccountIDExists(server, craccount_id); ;
+            if(!exists)
+                InsertCrAccount(server,craccount_id);
+            return craccount_id;
+        }
+
+        public void InsertCrAccount(string server,int craccount_id)
+        {
+            string sql = "insert into CRAccounts (id) values (@craccount_id)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@craccount_id",craccount_id);
+            q.Execute();
+        }
+        public bool CRAccountIDExists(string server,int craccount_id)
+        {
+            string sql = "select * from CRAccounts where id = @craccount_id"; ;
+            Query q = new Query(sql, server);
+            q.AddParameter("@craccount_id", craccount_id);
+            return q.ExecuteTable().Rows.Count > 0;
+        }
+        public int GetCRAccountID(string server,string creditor_account_id,double high_credit_or_limit,string acct_type,DateTime? date_opened,double? monthly_pmt)
+        {
+            string sql = "select (abs(checksum(@creditor_account_id,@high_credit_or_limit,@acct_type, dateadd(day, (1), eomonth(@date_opened, (-1))),@monthly_pmt)))";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditor_account_id", creditor_account_id);
+            q.AddParameter("@high_credit_or_limit", high_credit_or_limit);
+            q.AddParameter("@acct_type", acct_type);
+            q.AddParameter("@date_opened", date_opened);
+            q.AddParameter("@monthly_pmt", monthly_pmt);
+            return q.ExecuteSingle<int>();
+        }
+        public void SyncTradeLines(string server)
+        {
+            bool exists = CreditLib.Reports.CreditFileExistsInTradelines(server, creditfile_id);
+            if (exists)
+                CreditLib.Reports.DeleteTradeLines(server, creditfile_id);
+            foreach (var c in creditors)
+            {
+                
+                c.craccount_id = GetCRAccountIDAndInsertIfNot(server, c.creditor_account_id, c.high_credit_or_limit, c.acct_type, c.date_opened, c.monthly_pmt);
+                CreditLib.Reports.InsertTradeLine(server
+                        , creditfile_id
+                        , c.ecoa
+                        , c.whose
+                        , c.creditor
+                        , c.date_reported
+                        , c.date_opened
+                        , c.date_last_activity
+                        , c.high_credit_or_limit
+                        , c.acct_type
+                        , c.balance
+                        , c.terms_month_count
+                        , c.balance_past_due
+                        , c.mo_rev
+                        , c.late_30
+                        , c.late_60
+                        , c.late_90
+                        , c.status
+                        , c.note
+                        , null
+                        , c.creditor_account_id
+                        , c.monthly_pmt
+                        , c.paystring
+                        , c.paystring_start_date
+                        , c.status_code
+                        , c.credit_business_type
+                        , c.ownership_type
+                        , c.open_close
+                        , c.data_source
+                        , c.credit_loan_type
+                        , c.credit_business_type_detail
+                        , c.sequence_id
+                        , c.terms_description
+                        );
+                }
+            return;
+        }
+    }
+
+
+
+    public class Roles
+    {
+        public string role;
+        public bool is_primary;
+    }
+
+    public class CSMap
+    {
+        public string credit_score_label;
+        public string role_label;
+    }
+    public class TLMap
+    {
+        public string tradeline_comment_label;
+        public string tradeline_label;
+    }
+    public class XMLFile
+    {
+        public string character_set_encoding_type;
+        public string mime_type_id;
+        public string base_encoding;
+        public string raw;
+    }
+
+    public class Creditor
+    {
+        public string ecoa;
+        public string whose;
+        public string creditor;
+        public string creditor_account_id;
+        public DateTime? date_reported;
+        public DateTime? date_created;
+        public DateTime? date_opened;
+        public DateTime? date_last_activity;
+        public double high_credit_or_limit;
+        public string acct_type;
+        public double balance;
+        public int? terms_month_count;
+        public string terms_description;
+        public double balance_past_due;
+        public int mo_rev;
+        public int late_30;
+        public int late_60;
+        public int late_90;
+        public string status;
+        public string note;
+        public double? monthly_pmt;
+        public string paystring;
+        public DateTime? paystring_start_date;
+
+        public string status_code;
+        public string credit_business_type;
+        public string ownership_type;
+        public string open_close;
+        public string data_source;
+        public string credit_loan_type;
+        public string credit_business_type_detail;
+        public int sequence_id;
+        public int? craccount_id;
+
+        public override string ToString()
+        {
+            return creditor.ToString();
+        }
+        
+
+    }
+}
+
+
+--- FILE: CreditLib\CreditScoreFactors.cs ---
+namespace CreditLib
+{
+    public class CreditScoreFactors
+    {
+        public static bool CRFactorExists(string server, string factor_code)
+        {
+            string sql = "select * from CRFactorCodes cr where cr.id = @id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@id", factor_code);
+            
+            
+            return q.ExecuteTable().Rows.Count > 0;
+        }
+
+
+        public static bool CRScoreFactorExists(string server, int creditscore_id)
+        {
+            string sql = "select * from CRScoreFactors crs where crs.creditscore_id = @creditscore_id";
+            Query q = new Query(sql, server);
+ 
+            q.AddParameter("@creditscore_id", creditscore_id);
+            return q.ExecuteTable().Rows.Count > 0;
+        }
+
+        public static void DeleteCRScoreFactors(string server,int creditscore_id)
+        {
+            string sql = "delete crs from CRScoreFactors crs where crs.creditscore_id = @creditscore_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditscore_id", creditscore_id);
+            q.ExecuteTable();
+        }
+
+        public static void InsertCRScoreFactor(string server, int creditscore_id, string factorcode_id)
+        {
+            string sql = "insert into CRScoreFactors (creditscore_id,factorcode_id) values (@creditscore_id,@factorcode_id)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@factorcode_id", factorcode_id);
+            q.AddParameter("@creditscore_id", creditscore_id);
+            q.ExecuteTable();
+        }
+
+
+        public static string CreditFactorInsertUpdate(string server, string factor_code, string factor_text)
+        {
+            bool exists = CRFactorExists(server, factor_code);
+            if (!exists)
+            {
+                InsertCreditFactor(server, factor_code, factor_text);
+            }
+            return factor_code;
+        }
+        public static void InsertCreditFactor(string server, string factor_code, string factor_text)
+        {
+            string sql = "insert into CRFactorCodes (id,factor_text) values (@id,@factor_text)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@id", factor_code);
+            q.AddParameter("@factor_text", factor_text);
+            q.Execute();
+        }
+
+
+    }
+}
+
+
+--- FILE: CreditLib\Inquiries.cs ---
+namespace CreditLib
+{
+    public class InquiryLib
+    {
+        public static bool InquiryExists(string server, int creditfile_id)
+        {
+            string sql = "select * from CRInquiries c where c.CREDITFILE_ID = @creditfile_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            return q.ExecuteTable().Rows.Count > 0;
+        }
+
+        public static void DeleteInquiries(string server, int creditfile_id)
+        {
+            string sql = "delete from CRInquiries where creditfile_id = @creditfile_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            q.Execute();
+        }
+
+        public static void InsertInquiries(string server,int creditfile_id,string bureau,DateTime pull_date,string creditor,int? creditortype_id,string credit_business_type, string credit_business_type_detail)
+        {
+            string sql = "insert into CRInquiries (creditfile_id,bureau,pull_date,creditor,creditortype_id,credit_business_type,credit_business_type_detail) values (@creditfile_id,@bureau,@pull_date,@creditor,@creditortype_id,@credit_business_type,@credit_business_type_detail)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            q.AddParameter("@bureau", bureau);
+            q.AddParameter("@pull_date", pull_date);
+            q.AddParameter("@creditor", creditor);
+            q.AddParameter("@creditortype_id", creditortype_id);
+            q.AddParameter("@credit_business_type", credit_business_type);
+            q.AddParameter("@credit_business_type_detail", credit_business_type_detail);
+            q.Execute();
+        }
+    }
+    
+    public class Inquiries
+    {
+        public string bureau;
+        public DateTime pull_date;
+        public string creditor;
+        public int? credittype_id;
+        public string credit_business_type;
+        public string credit_business_type_detail;
+    }
+}
+
+
+--- FILE: CreditLib\Load.cs ---
+namespace CreditLib
+{
+    public class Load
+    {
+
+		public static int GetNewLoadId(string server)
+		{
+			int next_id = Database.Common.GetNextId(server, "credit_load_id");
+			return next_id;
+		}
+
+		public static CreditRunner ProcessCreditPull(string server,int file)
+		{
+            CreditLib.CreditRunner cr = new CreditRunner(server);
+            cr.ClearRun(file);
+			cr.SetServers(CreditRunner.CRS_LOGIN_TYPE.CREDIT);
+            cr.DoAll(file, true, true);
+			BadgerLib.Credit.DoAllCreditThings(server, file, cr.cr.pull_date, cr.cr.pdf, cr.cr.html);
+			return cr;
+        }
+
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+
+		public static CreditRunner LoadSingleCRSRequest(string server, Loader.CRRequest request)
+		{
+			CreditRunner crs = null;
+			if (request.requesttype_id == 1)
+			{
+				crs = CreditLib.Load.ProcessCreditPull(server, request.filenum.Value);
+                bool needs_update = CreditLib.Queue.NeedsUpdate(server, request.crrequest_id, crs.cr.status, crs.cr.status_description, crs.cr.error);
+				if(needs_update)
+                    CreditLib.Queue.UpdateStatus(server, request.crrequest_id, crs.cr.status, crs.cr.status_description, crs.cr.error);
+            }
+			if (request.requesttype_id == 2)
+				crs = CreditLib.TaxLib.ProcessTaxPull(server, request.crrequest_id, request.filenum);
+
+			
+			
+			
+			
+			
+			
+			
+			return crs;
+		}
+        public static async Task<Dictionary<int, CreditRunner>> LoadRequestsBulk(string server, List<Loader.CRRequest> reqs, int threads,IETA eta)
+        {
+            
+            Dictionary<int, CreditRunner> status = new Dictionary<int, CreditRunner>();
+            List<Task> tasks = new List<Task>();
+            var throttler = new SemaphoreSlim(threads, threads);
+            foreach (var req in reqs)
+            {
+				await throttler.WaitAsync();
+				tasks.Add(Task.Run(() =>
+				{
+					
+					try
+					{
+						Console.WriteLine($"Starting New Task: {req.filenum}");
+						
+						LoadSingleCRSRequest(server, req);
+						if (null != eta)
+							eta.IncrementAndReport();
+
+						Console.WriteLine($"Ending New Task: {req.filenum}");
+					}
+					finally { throttler.Release(); }
+				}));
+			}
+            Task.WaitAll(tasks.ToArray());
+            
+            return status;
+        }
+
+
+
+        
+        
+        
+        
+        
+        
+        
+
+        
+        
+        
+        
+        public static void ProcessCreditLoadNEW(string server,int? load_id,int? creditfile_id)
+        {
+			string sql = "exec dbo.ProcessCreditReportNew @creditfile_id = @creditfile_id";
+			Query q = new Query(sql, server);
+			q.AddParameter("@load_id", load_id);
+			q.AddParameter("@creditfile_id", creditfile_id);
+			q.ExecuteTable();
+		}
+
+		public static void ProcessTaxReport(string server,int? creditfile_id)
+		{
+			string sql = "exec dbo.ProcessTaxReport @creditfile_id=@creditfile_id";
+			Query q = new Query(sql, server);
+			q.AddParameter("@creditfile_id", creditfile_id);
+			q.ExecuteTable();
+        }
+
+        public static void CreateNewLoadId(string server, int load_id, DateTime asOf,string filename,bool api)
+		{
+			string sql = "insert into CreditLoads (id,asOf,filename,api) values (@load_id,@asOf,@filename,@api)";
+			Query q = new Query(sql, server);
+			q.AddParameter("@load_id", load_id);
+			q.AddParameter("@asOf", asOf);
+			q.AddParameter("@filename", filename);
+			q.AddParameter("@api", api);
+			q.Execute();
+		}
+		public static int? GetLoadId(string server, DateTime asOf)
+		{
+			string sql = "select id from CreditLoads l where l.asOf = @asOf";
+			Query q = new Query(sql, server);
+			q.AddParameter("@asOf", asOf);
+			return q.ExecuteSingleNullable<int>("id");
+		}
+
+		public static int? GetLoadIdFromFileNumber(string server, int file_number)
+		{
+			string sql = "select load_id from CreditTradeLinesRaw l where l.FileNumber = @file_number";
+			Query q = new Query(sql, server);
+			q.AddParameter("@file_number", file_number);
+			return q.ExecuteSingleNullable<int>("load_id");
+		}
+
+		public static void DeleteLoad(string server, int load_id)
+		{
+			string sql = "exec dbo.ResetCreditLoad @load_id=@load_id";
+			Query q = new Query(sql, server);
+			q.AddParameter("@load_id", load_id);
+			q.Execute();
+
+		}
+
+		public static bool SummaryAlreadyLoaded(string server, int load_id)
+        {
+			string sql = "select count(*) from CreditSummaryRaw s where s.load_id = @load_id";
+			Query q = new Query(sql, server);
+			q.AddParameter("@load_id", load_id);
+			int rows = q.ExecuteSingle<int>();
+			return rows != 0;
+        }
+
+		public static bool TradeLinesAlreadyLoaded(string server, int load_id)
+		{
+			string sql = "select count(*) from CreditTradeLinesRaw s where s.load_id = @load_id";
+			Query q = new Query(sql, server);
+			q.AddParameter("@load_id", load_id);
+			int rows = q.ExecuteSingle<int>();
+			return rows != 0;
+		}
+
+		public static bool FileNumExists(string server,int file_number)
+		{
+			string sql = "select creditfile_id from vCreditFiles where creditfile_id = @id";
+			Query q = new Query(sql, server);
+			q.AddParameter("@id", file_number);
+			return q.ExecuteTable().Rows.Count > 0; ;
+		}
+		public static bool RecordExists(string server, int file_number, DateTime asOf, string account_identifier)
+        {
+			string sql = "select count(*) from CreditTradeLinesRaw t where t.FileNumber = @file_number and t.NewCredRptDate = @asOf and t.accountIdentifier = @account_identifier";
+			Query q = new Query(sql, server);
+			q.AddParameter("@file_number", file_number);
+			q.AddParameter("@asOf", asOf);
+			q.AddParameter("@account_identifier<varchar>", account_identifier);
+			int rows = q.ExecuteSingle<int>();
+			return rows != 0;
+		}
+
+		public static void ProcessCreditReport(string server, int load_id,bool clear)
+        {
+			string sql = "exec dbo.ProcessCreditReports @load_id = @load_id, @clear=@clear";
+			Query q = new Query(sql, server);
+			q.AddParameter("@load_id", load_id);
+			q.AddParameter("@clear", clear);
+			q.Execute();
+		}
+
+		public static void InsertUpdateCreditSummaryRaw(string server, int load_id, int? FileNumber, string LoanNumber, string DealName, DateTime? NewCredRptDate, string CrdRptBorrName, string CrdRptCoBorrName, string CrdRptStreetAddress, string CrdRptCityStateZip, string CrdRptBorrEmployer, string CrdRptCoBorrEmployer, int? B1XpScore, int? B1EfScore, int? B1TuScore, int? B2XpScore, int? B2EfScore, int? B2TuScore, int? MtgOpenAccts, double? MtgOpenBal, int? MtgPastDueBal, double? MtgOtherMonthlyPmt, int? Mtg30_s, int? Mtg60_s, int? Mtg90_s, int? InstalOpenAccts, double? InstalOpenBal, double? InstalPastDueBal, double? InstalOtherMonthlyPmt, int? Instal30_s, int? Instal60_s, int? Instal90_s, int? RevolOpenAccts, double? RevolOpenBal, double? RevolPastDueBal, double? RevolOtherMonthlyPmt, int? Revol30_s, int? Revol60_s, int? Revol90_s, int? AutoOpenAccts, double? AutoOpenBal, double? AutoPastDueBal, double? AutoOtherMonthlyPmt, int? Auto30_s, int? Auto60_s, int? Auto90_s)
+		{
+			string sql = "insert into CreditSummaryRaw (load_id,FileNumber,LoanNumber,DealName,NewCredRptDate,CrdRptBorrName,CrdRptCoBorrName,CrdRptStreetAddress,CrdRptCityStateZip,CrdRptBorrEmployer,CrdRptCoBorrEmployer,B1XpScore,B1EfScore,B1TuScore,B2XpScore,B2EfScore,B2TuScore,MtgOpenAccts,MtgOpenBal,MtgPastDueBal,MtgOtherMonthlyPmt,Mtg30_s,Mtg60_s,Mtg90_s,InstalOpenAccts,InstalOpenBal,InstalPastDueBal,InstalOtherMonthlyPmt,Instal30_s,Instal60_s,Instal90_s,RevolOpenAccts,RevolOpenBal,RevolPastDueBal,RevolOtherMonthlyPmt,Revol30_s,Revol60_s,Revol90_s,AutoOpenAccts,AutoOpenBal,AutoPastDueBal,AutoOtherMonthlyPmt,Auto30_s,Auto60_s,Auto90_s) values (@load_id, @FileNumber, @LoanNumber, @DealName, @NewCredRptDate, @CrdRptBorrName, @CrdRptCoBorrName, @CrdRptStreetAddress, @CrdRptCityStateZip, @CrdRptBorrEmployer, @CrdRptCoBorrEmployer, @B1XpScore, @B1EfScore, @B1TuScore, @B2XpScore, @B2EfScore, @B2TuScore, @MtgOpenAccts, @MtgOpenBal, @MtgPastDueBal, @MtgOtherMonthlyPmt, @Mtg30_s, @Mtg60_s, @Mtg90_s, @InstalOpenAccts, @InstalOpenBal, @InstalPastDueBal, @InstalOtherMonthlyPmt, @Instal30_s, @Instal60_s, @Instal90_s, @RevolOpenAccts, @RevolOpenBal, @RevolPastDueBal, @RevolOtherMonthlyPmt, @Revol30_s, @Revol60_s, @Revol90_s, @AutoOpenAccts, @AutoOpenBal, @AutoPastDueBal, @AutoOtherMonthlyPmt, @Auto30_s, @Auto60_s, @Auto90_s)";
+			Query q = new Query(sql, server);
+			q.AddParameter("@load_id", load_id);
+			q.AddParameter("@FileNumber", FileNumber);
+			q.AddParameter("@LoanNumber", LoanNumber);
+			q.AddParameter("@DealName", DealName);
+			q.AddParameter("@NewCredRptDate", NewCredRptDate);
+			q.AddParameter("@CrdRptBorrName", CrdRptBorrName);
+			q.AddParameter("@CrdRptCoBorrName", CrdRptCoBorrName);
+			q.AddParameter("@CrdRptStreetAddress", CrdRptStreetAddress);
+			q.AddParameter("@CrdRptCityStateZip", CrdRptCityStateZip);
+			q.AddParameter("@CrdRptBorrEmployer", CrdRptBorrEmployer);
+			q.AddParameter("@CrdRptCoBorrEmployer", CrdRptCoBorrEmployer);
+			q.AddParameter("@B1XpScore", B1XpScore);
+			q.AddParameter("@B1EfScore", B1EfScore);
+			q.AddParameter("@B1TuScore", B1TuScore);
+			q.AddParameter("@B2XpScore", B2XpScore);
+			q.AddParameter("@B2EfScore", B2EfScore);
+			q.AddParameter("@B2TuScore", B2TuScore);
+			q.AddParameter("@MtgOpenAccts", MtgOpenAccts);
+			q.AddParameter("@MtgOpenBal", MtgOpenBal);
+			q.AddParameter("@MtgPastDueBal", MtgPastDueBal);
+			q.AddParameter("@MtgOtherMonthlyPmt", MtgOtherMonthlyPmt);
+			q.AddParameter("@Mtg30_s", Mtg30_s);
+			q.AddParameter("@Mtg60_s", Mtg60_s);
+			q.AddParameter("@Mtg90_s", Mtg90_s);
+			q.AddParameter("@InstalOpenAccts", InstalOpenAccts);
+			q.AddParameter("@InstalOpenBal", InstalOpenBal);
+			q.AddParameter("@InstalPastDueBal", InstalPastDueBal);
+			q.AddParameter("@InstalOtherMonthlyPmt", InstalOtherMonthlyPmt);
+			q.AddParameter("@Instal30_s", Instal30_s);
+			q.AddParameter("@Instal60_s", Instal60_s);
+			q.AddParameter("@Instal90_s", Instal90_s);
+			q.AddParameter("@RevolOpenAccts", RevolOpenAccts);
+			q.AddParameter("@RevolOpenBal", RevolOpenBal);
+			q.AddParameter("@RevolPastDueBal", RevolPastDueBal);
+			q.AddParameter("@RevolOtherMonthlyPmt", RevolOtherMonthlyPmt);
+			q.AddParameter("@Revol30_s", Revol30_s);
+			q.AddParameter("@Revol60_s", Revol60_s);
+			q.AddParameter("@Revol90_s", Revol90_s);
+			q.AddParameter("@AutoOpenAccts", AutoOpenAccts);
+			q.AddParameter("@AutoOpenBal", AutoOpenBal);
+			q.AddParameter("@AutoPastDueBal", AutoPastDueBal);
+			q.AddParameter("@AutoOtherMonthlyPmt", AutoOtherMonthlyPmt);
+			q.AddParameter("@Auto30_s", Auto30_s);
+			q.AddParameter("@Auto60_s", Auto60_s);
+			q.AddParameter("@Auto90_s", Auto90_s);
+			q.Execute();
+
+		}
+		public static void InsertUpdateTradeLinesRaw(string server, int load_id, int FileNumber, string LoanNumber, string DealName, DateTime? NewCredRptDate, DateTime? Birth_Date, string Marital_Status, string CrdRptBorrName, DateTime? CoBorrower_Birth_Date, string CoBorrower_Marital_Status, string CrdRptCoBorrName, string CrdRptStreetAddress, string CrdRptCityStateZip, string CrdRptBorrEmployer, string CrdRptCoBorrEmployer, int? B1XpScore, int? B1EfScore, int? B1TuScore, int? B2XpScore, int? B2EfScore, int? B2TuScore, string creditorName, string creditorStreet, string creditorCity, string creditorState, string creditorPostalCode, string accountIdentifier, string accountOpenedDate, string accountOwnershipType, string accountReportedDate, string accountType, double? highCreditAmount, string lastActivityDate, DateTime? monthylPaymentAmount, int? monthsReviewedCount, int? TermsMonthsCount, double? unpaidBalanceAmount, string creditLoanType, string accountStatusType, int? monthsRemainingCount, double? pastDueAmount, string termsDescription, string creditBusinessType, string currentRatingCode, string type, int? highestAdverseRatingCode, string date, int? lateCount30Days, int? lateCount60Days, int? lateCount90Days, int? mostRecentAdverseRatingCode, string paymentPatternData, string startDate, int? priorAdverseRatingCode, string creditCommentSourceType, string text)
+		{
+			string sql = "insert into CreditTradeLinesRaw (load_id,FileNumber,LoanNumber,DealName,NewCredRptDate,Birth_Date,Marital_Status,CrdRptBorrName,CoBorrower_Birth_Date,CoBorrower_Marital_Status,CrdRptCoBorrName,CrdRptStreetAddress,CrdRptCityStateZip,CrdRptBorrEmployer,CrdRptCoBorrEmployer,B1XpScore,B1EfScore,B1TuScore,B2XpScore,B2EfScore,B2TuScore,creditorName,creditorStreet,creditorCity,creditorState,creditorPostalCode,accountIdentifier,accountOpenedDate,accountOwnershipType,accountReportedDate,accountType,highCreditAmount,lastActivityDate,monthylPaymentAmount,monthsReviewedCount,TermsMonthsCount,unpaidBalanceAmount,creditLoanType,accountStatusType,monthsRemainingCount,pastDueAmount,termsDescription,creditBusinessType,currentRatingCode,type,highestAdverseRatingCode,date,lateCount30Days,lateCount60Days,lateCount90Days,mostRecentAdverseRatingCode,paymentPatternData,startDate,priorAdverseRatingCode,creditCommentSourceType,text) values (@load_id,@FileNumber, @LoanNumber, @DealName, @NewCredRptDate, @Birth_Date, @Marital_Status, @CrdRptBorrName, @CoBorrower_Birth_Date, @CoBorrower_Marital_Status, @CrdRptCoBorrName, @CrdRptStreetAddress, @CrdRptCityStateZip, @CrdRptBorrEmployer, @CrdRptCoBorrEmployer, @B1XpScore, @B1EfScore, @B1TuScore, @B2XpScore, @B2EfScore, @B2TuScore, @creditorName, @creditorStreet, @creditorCity, @creditorState, @creditorPostalCode, @accountIdentifier, @accountOpenedDate, @accountOwnershipType, @accountReportedDate, @accountType, @highCreditAmount, @lastActivityDate, @monthylPaymentAmount, @monthsReviewedCount, @TermsMonthsCount, @unpaidBalanceAmount, @creditLoanType, @accountStatusType, @monthsRemainingCount, @pastDueAmount, @termsDescription, @creditBusinessType, @currentRatingCode, @type, @highestAdverseRatingCode, @date, @lateCount30Days, @lateCount60Days, @lateCount90Days, @mostRecentAdverseRatingCode, @paymentPatternData, @startDate, @priorAdverseRatingCode, @creditCommentSourceType, @text)";
+			Query q = new Query(sql, server);
+			q.AddParameter("@load_id", load_id);
+			q.AddParameter("@FileNumber", FileNumber);
+            q.AddParameter("@LoanNumber", LoanNumber);
+			q.AddParameter("@DealName", DealName);
+			q.AddParameter("@NewCredRptDate", NewCredRptDate);
+			q.AddParameter("@Birth_Date", Birth_Date);
+			q.AddParameter("@Marital_Status", Marital_Status);
+			q.AddParameter("@CrdRptBorrName", CrdRptBorrName);
+			q.AddParameter("@CoBorrower_Birth_Date", CoBorrower_Birth_Date);
+			q.AddParameter("@CoBorrower_Marital_Status", CoBorrower_Marital_Status);
+			q.AddParameter("@CrdRptCoBorrName", CrdRptCoBorrName);
+			q.AddParameter("@CrdRptStreetAddress", CrdRptStreetAddress);
+			q.AddParameter("@CrdRptCityStateZip", CrdRptCityStateZip);
+			q.AddParameter("@CrdRptBorrEmployer", CrdRptBorrEmployer);
+			q.AddParameter("@CrdRptCoBorrEmployer", CrdRptCoBorrEmployer);
+			q.AddParameter("@B1XpScore", B1XpScore);
+			q.AddParameter("@B1EfScore", B1EfScore);
+			q.AddParameter("@B1TuScore", B1TuScore);
+			q.AddParameter("@B2XpScore", B2XpScore);
+			q.AddParameter("@B2EfScore", B2EfScore);
+			q.AddParameter("@B2TuScore", B2TuScore);
+			q.AddParameter("@creditorName", creditorName);
+			q.AddParameter("@creditorStreet", creditorStreet);
+			q.AddParameter("@creditorCity", creditorCity);
+			q.AddParameter("@creditorState", creditorState);
+			q.AddParameter("@creditorPostalCode", creditorPostalCode);
+			q.AddParameter("@accountIdentifier<varchar>", accountIdentifier);
+			q.AddParameter("@accountOpenedDate", accountOpenedDate);
+			q.AddParameter("@accountOwnershipType", accountOwnershipType);
+			q.AddParameter("@accountReportedDate", accountReportedDate);
+			q.AddParameter("@accountType", accountType);
+			q.AddParameter("@highCreditAmount", highCreditAmount);
+			q.AddParameter("@lastActivityDate", lastActivityDate);
+			q.AddParameter("@monthylPaymentAmount", monthylPaymentAmount);
+			q.AddParameter("@monthsReviewedCount", monthsReviewedCount);
+			q.AddParameter("@TermsMonthsCount", TermsMonthsCount);
+			q.AddParameter("@unpaidBalanceAmount", unpaidBalanceAmount);
+			q.AddParameter("@creditLoanType", creditLoanType);
+			q.AddParameter("@accountStatusType", accountStatusType);
+			q.AddParameter("@monthsRemainingCount", monthsRemainingCount);
+			q.AddParameter("@pastDueAmount", pastDueAmount);
+			q.AddParameter("@termsDescription", termsDescription);
+			q.AddParameter("@creditBusinessType", creditBusinessType);
+			q.AddParameter("@currentRatingCode", currentRatingCode);
+			q.AddParameter("@type", type);
+			q.AddParameter("@highestAdverseRatingCode", highestAdverseRatingCode);
+			q.AddParameter("@date", date);
+			q.AddParameter("@lateCount30Days", lateCount30Days);
+			q.AddParameter("@lateCount60Days", lateCount60Days);
+			q.AddParameter("@lateCount90Days", lateCount90Days);
+			q.AddParameter("@mostRecentAdverseRatingCode", mostRecentAdverseRatingCode);
+			q.AddParameter("@paymentPatternData<varchar>", paymentPatternData);
+			q.AddParameter("@startDate", startDate);
+			q.AddParameter("@priorAdverseRatingCode", priorAdverseRatingCode);
+			q.AddParameter("@creditCommentSourceType", creditCommentSourceType);
+			q.AddParameter("@text", text);
+			q.Execute();
+
+		}
+
+
+
+	}
+}
+
+
+--- FILE: CreditLib\Parser.cs ---
+namespace CreditLib
+{
+    public class CRSRunner : DBLHelper.GenericBase, IDBLoader
+    {
+        public CRSRunner(string server) : base(server)
+        {
+            
+        }
+
+
+        
+
+        int load_id;
+        public DBOutputHelper ParseAndLoad()
+        {
+
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            return null;
+            
+            
+            
+
+            
+            
+            
+        }
+    }
+}
+
+
+--- FILE: CreditLib\Properties\AssemblyInfo.cs ---
+[assembly: AssemblyTitle("CreditLib")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("CreditLib")]
+[assembly: AssemblyCopyright("Copyright ©  2020")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+
+
+
+[assembly: ComVisible(false)]
+
+
+[assembly: Guid("2eb145d8-aa24-46a1-9df4-984638fa49b0")]
+
+
+
+
+
+
+
+
+
+
+
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
+
+--- FILE: CreditLib\Queue.cs ---
+namespace CreditLib {
+    public static class Queue     
+    {
+
+        public static int? QueueExistsFromFileNum(string server, int filenum)
+        {
+            string sql = "select crqueue_id from vCRQueue where filenum = @filenum";
+            Query q = new Query(sql, server);
+            q.AddParameter("@filenum", filenum);
+            return q.ExecuteSingleNullable<int>("crqueue_id");
+        }
+        public static int InsertQueue(string server,int filenum, int requesttype_id, int applicant_id, int? applicant_co_id,string input_xml,string status,string status_description,DateTime? asOf) 
+        {
+            string sql = "insert into CRQueue (requesttype_id,filenum,request_time,status,applicant_id,applicant_co_id,xml,status_description,last_updated,asOf) output inserted.id values (@requesttype_id,@filenum,@request_time,@status,@applicant_id,@applicant_co_id,@xml,@status_description,GetDate(),@asOf)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@filenum", filenum);
+            q.AddParameter("@requesttype_id", requesttype_id);
+            q.AddParameter("@applicant_id", applicant_id);
+            q.AddParameter("@applicant_co_id", applicant_co_id);
+            q.AddParameter("@xml", input_xml);
+            q.AddParameter("@status", status);
+            q.AddParameter("@status_description",status_description);
+            q.AddParameter("@request_time", DateTime.Now);
+            q.AddParameter("@asOf", asOf);
+            return q.ExecuteSingle<int>("id");
+        }
+
+        public static bool NeedsUpdate(string server, int crqueue_id, string status, string status_description,string error)
+        {
+            string sql = "select * from vCRQueue where crqueue_id=@crqueue_id and isnull(status,'')=isnull(@status,'') and isnull(status_description,'')=isnull(@status_description,'') and isnull(error,'')=isnull(@error,'')";
+            Query q = new Query(sql, server);
+            q.AddParameter("@status", status);
+            q.AddParameter("@status_description", status_description);
+            q.AddParameter("@crqueue_id", crqueue_id);
+            q.AddParameter("@error", error);
+            return q.ExecuteTable().Rows.Count == 0;
+        }
+
+        public static bool RequestExistsFromFileNum(string server, int filenum)
+        {
+            string sql = "select * from CRQueue q where q.filenum = @filenum";
+            Query q = new Query(sql, server);
+            q.AddParameter("@filenum", filenum);
+            
+            return q.ExecuteTable().Rows.Count == 1;
+        }
+
+        public static bool IsProcessed(string server, int crqueue_id)
+        {
+            string sql = "select * from vCRQueue q where q.crqueue_id = @crqueue_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@crqueue_id", crqueue_id);
+
+            return q.ExecuteSingle<bool>("processed");
+        }
+
+        public static void UpdateStatus(string server,int crqueue_id, string status,string status_description,string error)
+        {
+            string sql = "update CRQueue set status = @status, status_description = @status_description,last_updated = dbo.GetDateNY(),error=@error where id = @crqueue_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@status", status);
+            q.AddParameter("@status_description", status_description);
+            q.AddParameter("@crqueue_id", crqueue_id);
+            q.AddParameter("@error", error);
+            q.Execute();
+        }
+        
+
+    }
+}
+
+
+--- FILE: CreditLib\Reports.cs ---
+namespace CreditLib
+{
+    public class Reports
+    {
+
+
+        public static bool CreditFileExistsInTradelines(string server,int creditfile_id)
+        {
+            string sql = "select id from CRTradeLines c where creditfile_id = @creditfile_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            return q.ExecuteTable().Rows.Count > 0;
+        }
+
+        public static void DeleteTradeLines(string server, int creditfile_id)
+        {
+            string sql = "delete from CRTradeLines where creditfile_id = @creditfile_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            q.Execute();
+        }
+
+
+
+        public static int InsertUpdateCRAccountId(string server,string credit_account_id,string creditor,DateTime? date_opened,double high_credit_or_limit,string acct_type)
+        {
+            string sql = "exec dbo.InsertUpdateCRAccountID @creditor_account_id=@creditor_account_id,@creditor=creditor,@date_opened=@date_opened,@high_credit_or_limit=@high_credit_or_limit, @acct_type=@acct_type";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditor_account_id<varchar>", credit_account_id);
+            q.AddParameter("@creditor", creditor);
+            q.AddParameter("@date_opened", date_opened);
+            q.AddParameter("@high_credit_or_limit", high_credit_or_limit);
+            q.AddParameter("@acct_type", acct_type);
+            q.UseCache = true;
+            return q.ExecuteSingle<int>();
+        }
+
+        public static void InsertTradeLine(string server, int creditfile_id, string ecoa, string whose, string creditor, DateTime? date_reported, DateTime? date_opened, DateTime? date_last_activity, double high_credit_or_limit, string acct_type, double balance, int? terms_month_count, double balance_past_due, int mo_rev, int late_30, int late_60, int late_90, string status, string note, string source, string creditor_account_id, double? monthly_pmt, string paystring, DateTime? paystring_start_date, string status_code, string credit_business_type, string ownership_type, string open_close, string data_source, string credit_loan_type, string credit_business_type_detail,int sequence_id,string terms_description)
+        {
+            string sql = "INSERT INTO CRTradeLines (creditfile_id, ecoa, whose, creditor, date_reported, date_opened, date_last_activity, high_credit_or_limit, acct_type, balance, terms_month_count, balance_past_due, mo_rev, late_30, late_60, late_90, status, source, note,creditor_account_id,monthly_pmt,paystring,paystring_start_date,status_code, credit_business_type, ownership_type, open_close, data_source, credit_loan_type, credit_business_type_detail,sequence_id,terms_description) values (@creditfile_id, @ecoa, @whose, @creditor, @date_reported, @date_opened, @date_last_activity, @high_credit_or_limit, @acct_type, @balance, @terms_month_count, @balance_past_due, @mo_rev, @late_30, @late_60, @late_90, @status, @source, @note,@creditor_account_id,@monthly_pmt,@paystring,@paystring_start_date,@status_code, @credit_business_type, @ownership_type, @open_close, @data_source, @credit_loan_type, @credit_business_type_detail, @sequence_id, @terms_description)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            q.AddParameter("@ecoa", ecoa);
+            q.AddParameter("@whose", whose);
+            q.AddParameter("@creditor", creditor);
+            q.AddParameter("@date_reported", date_reported);
+            q.AddParameter("@date_opened<date>", date_opened);
+            q.AddParameter("@date_last_activity", date_last_activity);
+            q.AddParameter("@high_credit_or_limit", high_credit_or_limit);
+            q.AddParameter("@acct_type", acct_type);
+            q.AddParameter("@balance", balance);
+            q.AddParameter("@terms_month_count", terms_month_count);
+            q.AddParameter("@balance_past_due", balance_past_due);
+            q.AddParameter("@mo_rev", mo_rev);
+            q.AddParameter("@late_30", late_30);
+            q.AddParameter("@late_60", late_60);
+            q.AddParameter("@late_90", late_90);
+            q.AddParameter("@status", status);
+            q.AddParameter("@source", source);
+            q.AddParameter("@note", note);
+            q.AddParameter("@creditor_account_id", creditor_account_id);
+            q.AddParameter("@monthly_pmt", monthly_pmt);
+            q.AddParameter("@paystring", paystring);
+            q.AddParameter("@paystring_start_date", paystring_start_date);
+
+            q.AddParameter("@status_code", status_code);
+            q.AddParameter("@credit_business_type", credit_business_type);
+            q.AddParameter("@ownership_type", ownership_type);
+            q.AddParameter("@open_close", open_close);
+            q.AddParameter("@data_source", data_source);
+            q.AddParameter("@credit_loan_type", credit_loan_type);
+            q.AddParameter("@credit_business_type_detail", credit_business_type_detail);
+            q.AddParameter("@sequence_id", sequence_id);
+            q.AddParameter("@terms_description", terms_description);
+            q.Execute();
+        }
+    }
+}
+
+
+--- FILE: CreditLib\ReportsOld.cs ---
+namespace CreditLib
+{
+    public class ReportsOld
+    {
+
+        public static DateTime? GetAsOf(string server,string file_id)
+        {
+            string sql = "select cl.asOf from CreditFiles cf join CreditLoads cl on cf.id = @file_id and cf.load_id = cl.id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@file_id", file_id);
+            q.UseCache = true;
+            return q.ExecuteSingleNullable<DateTime>("asOf");
+        }
+        public static DataTable CompareReports(string server, string before, string after,bool ignore_charge_offs)
+        {
+            Query q = new Query("CreditCompare.sql", server);
+            q.AddParameter("@before", before);
+            q.AddParameter("@after", after);
+            q.AddParameter("@ignore_charge_offs", ignore_charge_offs);
+            return q.ExecuteTable();
+        }
+	}
+}
+
+
+--- FILE: CreditLib\Scores.cs ---
+namespace CreditLib
+{
+    public class Scores
+    {
+
+        public class CRScores
+        {
+            public DateTime asof;
+            public int? applicant_id;
+            public int? score;
+            public string score_raw;
+            public int model_id;
+            public string model;
+            public int? rank_pct;
+            public List<Scores.CRScoreFactor> factors = new List<CRScoreFactor>();
+            public bool is_primary_app;
+            public bool is_co_app;
+            public string credit_score_label;
+        }
+
+        public class CRScoreFactor
+        {
+            public string factor_code;
+            public string factor_text;
+        }
+
+       
+        public static bool CRScoresExist(string server, int creditfile_id)
+        {
+            string sql = "select * from CRScores where creditfile_id = @creditfile_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            return q.ExecuteTable().Rows.Count > 0;
+        }
+
+        public static void DeleteScores(string server, int creditfile_id)
+        {
+            string sql = "delete from CRScores where creditfile_id = @creditfile_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            q.Execute();
+        }
+
+        public static int? GetCreditModelId(string server,string model_tag)
+        {
+            string sql = "select * from vCreditScoreModels c where c.lookup = @model_tag";
+            Query q = new Query(sql, server);
+            q.AddParameter("@model_tag", model_tag);
+            q.UseCache = true;
+            return q.ExecuteSingleNullable<int>("creditscoremodel_id");
+        }
+
+
+        
+        
+        
+        
+        
+        
+        
+        
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+
+        public static int InsertScores(string server,int creditfile_id,int? applicant_id,int? score, DateTime? asOf,int model_id, int? rank_pct,string score_raw)
+        {
+            string sql = "insert into CRScores (creditfile_id,applicant_id,score,asof,model_id,rank_pct,score_raw) OUTPUT inserted.id values (@creditfile_id,@applicant_id,@score,@asof,@model_id,@rank_pct,@score_raw)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            q.AddParameter("@applicant_id", applicant_id);
+            q.AddParameter("@score", score);
+            q.AddParameter("@asof", asOf);
+            q.AddParameter("@model_id", model_id);
+            q.AddParameter("@rank_pct", rank_pct);
+            q.AddParameter("@score_raw", score_raw);
+            int id = q.ExecuteSingle<int>();
+            return id;
+        }
+
+    }
+}
+
+
+--- FILE: CreditLib\SQL\CreditCompare.sql ---
+declare @helper int
+declare @months_back int = 2
+
+if @before > @after
+  begin
+    set @helper = @after
+    set @after = @before
+    set @before = @helper
+  end
+
+drop table if exists #tmp
+drop table if exists #summary
+
+select 
+  cl.asOf
+  , ctls.creditfile_id
+  , cat.[name] [account_type]
+  , ctls.creditor_name 
+  , sum(ctls.balance) [balance]
+  , sum(ctls.high_credit_amount) [high_credit]
+  , sum(ctls.monthly_payment) [payments]
+  , sum(ctls.balance_past_due) [past_due]
+  
+  , cat.name [credit_account_type]
+  , cat.ordering_default
+  into #tmp
+  from 
+    CreditTradeLinesSimple ctls
+    join CreditAccountTypes cat on cat.id = ctls.accounttype_id
+    join CreditLoads cl on cl.id = ctls.load_id
+    join CreditAccountStatus cas on cas.id = ctls.accountstatus_id
+    WHERE 
+      creditfile_id in (@before,@after)
+      
+      
+      
+      and (cas.charge_off = 0 or @ignore_charge_offs=0)
+      and ctls.possible_dupe = 0
+      and ctls.closed = 0
+      
+    group by
+      cl.asOf
+      , cat.name
+      , cat.ordering_default
+      , CTLS.creditor_name
+      , ctls.creditfile_id
+    order by
+      cat.ordering_default ASC
+      
+      
+CREATE TABLE #SUMMARY
+(
+  creditor_name varchar(400)
+  , account_type varchar(100)
+  , balance_before float DEFAULT 0 
+  , payments_before float DEFAULT 0
+  , past_due_before float DEFAULT 0
+  
+  , balance_after float DEFAULT 0
+  , payments_after float DEFAULT 0
+  , past_due_after float DEFAULT 0
+  
+  , [balance_after-before] float
+  , [payments_after-before] float
+  , [past_due_after-before] float
+)
+
+
+
+update #tmp set creditor_name = '<NOT LISTED>' WHERE creditor_name IS NULL
+
+insert into #summary (creditor_name) select distinct creditor_name FROM #TMP t where (t.balance != 0 and t.balance IS NOT NULL)
+
+update s set account_type = t.account_type from #summary s join #tmp t on t.creditor_name = s.creditor_name
+
+
+UPDATE s set balance_before = balance, payments_before = payments , past_due_before = past_due from #summary s join #tmp t on t.creditfile_id = @before and t.creditor_name = s.creditor_name
+UPDATE s set balance_after = balance, payments_after = payments , past_due_after = past_due from #summary s join #tmp t on t.creditfile_id = @after and t.creditor_name = s.creditor_name
+
+update s set [balance_after-before] = balance_after-balance_before, [payments_after-before]= payments_after-payments_before, [past_due_after-before]=past_due_after-past_due_before  from #summary s
+
+SELECT * FROM #SUMMARY s order by creditor_name ASC
+SELECT * FROM #TMP
+
+
+--- FILE: CreditLib\TaxLib.cs ---
+namespace CreditLib
+{
+    using static CRSLib.TaxTranscript;
+    using TaxHelper = CRSLib.CRSService.TaxHelper;
+    public class TaxLib
+    {
+
+        public static string IVES_FILENAME = "4506-C - Executed.pdf";
+
+        public static int? ApplicationHasComplete4506C(string file)
+        {
+            
+            int? has_sig = UtilsLib.PDF.PDFContainsText(file, "DocuSign Envelope ID:");
+            
+            if (null != has_sig)
+            {
+                int? tax_form_field = UtilsLib.PDF.PDFContainsText(file, "IVES");
+                int? has_kcb = UtilsLib.PDF.PDFContainsText(file, "304088");
+                
+                if (null != tax_form_field && null != has_kcb && (tax_form_field.Value == has_kcb.Value))
+                {
+                    return tax_form_field;
+                }
+            }
+            
+            return null;
+        }
+
+        public static List<string> GetAllNeeded4506Downloads(string server)
+        {
+            string sql = "select a.asset_id from vAssets a join vUnderwriting u on u.asset_id = a.asset_id join API_APPLICATION m on m.external_id = a.max_id where a.final_disposition_date is null and u.[4506_filename] is null and m.ics_issue_date >= '2/14/2023'";
+            Query q = new Query(sql, server);
+            return q.ExecuteList<string>();
+        }
+
+        public static string Get4506CFile(string server,string asset_id)
+        {
+            string sql = "select [4506_filename] from vUnderwriting u where u.asset_id = @asset_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@asset_id", asset_id);
+            string file = q.ExecuteSingle<string>("4506_filename");
+            if (String.IsNullOrEmpty(file))
+                return null;
+            string base_folder = BadgerLib.Assets.LocalFolderLocation(server, asset_id, true, true);
+            return Path.Combine(base_folder, file);
+        }
+        public static List<string> GetAllNeededOrders(string server)
+        {
+            Query q = new Query("CRSNeededOrders.sql", server);
+            return q.ExecuteList<string>();
+        }
+
+        public static void OrderTaxTranscript(string server,string asset_id)
+        {
+            CreditLib.CreditRunner cr = new CreditRunner(server); 
+            
+            
+
+            cr.SetServers(CreditRunner.CRS_LOGIN_TYPE.TAX);
+            var response = cr.OrderTaxTranscript(asset_id);
+            CreditLib.TaxLib.UpdateCRRequestStatus(server, response.file_num, response.status, response.status_description,response.xml);
+        }
+        public static bool Application4506NeedsTrimming(string file)
+        {
+            return UtilsLib.PDF.PDFTotalPages(file) != 1;
+        }
+
+        
+        public static string Trim4506IfNeeded(string full_file_src,string base_folder_save_to)
+        {
+            string new_name_final = Path.Combine(base_folder_save_to, CreditLib.TaxLib.IVES_FILENAME);
+            int? ready_to_go = ApplicationHasComplete4506C(full_file_src);
+            bool needs_trimming = Application4506NeedsTrimming(full_file_src);
+            if (null != ready_to_go && needs_trimming)
+            {
+                UtilsLib.PDF.PDFSplitMergeIron(full_file_src, new int[] { ready_to_go.Value }, new_name_final);
+            }
+            else
+                return full_file_src;
+            
+            return new_name_final; 
+                
+        }
+
+
+
+        public static int InsertRequest(string server, int filenum, int requesttype_id, int applicant_id, int? applicant_co_id,string status,string status_description,DateTime? asOf)
+        {
+            string sql = "insert into CRQueue (filenum,applicant_id,applicant_co_id,status,status_description,requesttype_id) inserted.id values (@creditfile_id,@applicant_id,@applicant_co_id,@status,@status_description,@requesttype_id,@asOf)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@filenum", filenum);
+            q.AddParameter("@requesttype_id", requesttype_id);
+            q.AddParameter("@applicant_id", applicant_id);
+            q.AddParameter("@applicant_co_id", applicant_co_id);
+            q.AddParameter("@status", status);
+            q.AddParameter("@status_description", status_description);
+            q.AddParameter("@asOf", asOf);
+            return q.ExecuteSingle<int>();
+        }
+
+        public static Dictionary<int,int> GetPendingProcessingQueue(string server,int crrequesttype_id)
+        {
+            string sql = "select request_id,filenum from vCRQueue where processed = 0 and requesttype_id = @requesttype_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@requesttype_id", crrequesttype_id);
+            return q.ExecuteDictRows<int, int>("request_id", "filenum");
+        }
+        public static Dictionary<int, int> GetReadyToProcessQueue(string server, int requesttype_id)
+        {
+            string sql = "select request_id,filenum from vCRQueue where processed = 0 and requesttype_id = @requesttype_id and status = 'Completed'";
+            Query q = new Query(sql, server);
+            q.AddParameter("@requesttype_id", requesttype_id);
+            return q.ExecuteDictRows<int, int>("request_id", "filenum");
+        }
+        
+        
+        
+        
+        
+        
+        
+               
+        
+        
+        
+
+        
+        
+        
+        
+        
+        
+        
+        
+
+        public static CreditRunner ProcessTaxPull(string server,int request_id, int? filenum)
+        {
+            CreditLib.CreditRunner cr = new CreditRunner(server);
+            cr.SetServers(CreditRunner.CRS_LOGIN_TYPE.TAX);
+            var tax = cr.PullTaxOrder(filenum.Value, false, false);
+
+            string xml = UtilsLib.XML.Serialize<TaxHelper>(tax);
+            UpdateCRRequestStatus(server, request_id, tax.full_call.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.STATUSES.STATUS.StatusCode, tax.full_call.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.STATUSES.STATUS.StatusDescription, xml);
+            CreditLib.TaxLib.ClearTax(server, filenum.Value);
+            WriteAllTax(server, tax);
+            CreditLib.Load.ProcessTaxReport(server, filenum);
+            
+            
+            
+            
+            
+            
+            
+            return cr;
+        }
+
+
+        public static void WriteTaxForms(string server,int taxtranscript_id,TaxHelper th)
+        {
+
+        }
+
+        public static int WriteSectionValues(string server,int taxsection_id, TaxTranscriptsEIVTAXTRANSCRIPT_V100FORMSECTIONSECTIONFIELD section_fields)
+        {
+            string sql = "insert into CRTaxSectionValues (taxsection_id,name,value) output inserted.id values (@taxsection_id,@name,@value)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@taxsection_id", taxsection_id);
+            q.AddParameter("@name", section_fields.FIELDNAME);
+            q.AddParameter("@value", section_fields.FIELDVALUE);
+            return q.ExecuteSingle<int>();
+
+        }
+        public static int WriteSection(string server, int taxform_id, TaxTranscriptsEIVTAXTRANSCRIPT_V100FORMSECTION section)
+        {
+            string sql = "insert into CRTaxSections (taxform_id,name) output inserted.id values (@taxform_id,@name)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@taxform_id", taxform_id);
+            q.AddParameter("@name", section.SECTIONNAME);
+            return q.ExecuteSingle<int>();
+        }
+        public static int WriteTaxForm(string server,int taxtranscript_id, TaxTranscript.TaxTranscriptsEIVTAXTRANSCRIPT_V100FORM frm)
+        {
+            string sql = "insert into CRTaxForms (type,taxtranscript_id) output inserted.id values (@type,@taxtranscript_id)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@taxtranscript_id", taxtranscript_id);
+            q.AddParameter("@type", frm.FORMTYPE);
+            return q.ExecuteSingle<int>();
+        }
+
+        public static void ClearTax(string server,int filenum)
+        {
+            string sql = "exec dbo.DeleteTax @creditfile_id = @creditfile_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", filenum);
+            q.Execute();
+        }
+        public static void WriteAllTax(string server, TaxHelper th)
+        {
+            int creditfile_id = th.full_call.DEAL_SETS.DEAL_SET.DEALS.DEAL.SERVICES.SERVICE.SERVICE_PRODUCT_FULFILLMENT.SERVICE_PRODUCT_FULFILLMENT_DETAIL.VendorOrderIdentifier;
+            if (null != th.tax)
+            {
+                foreach (var tax in th.tax.EIVTAXTRANSCRIPT_V100)
+                {
+                    int taxtranscript_id = InsertTaxTranscript(server, creditfile_id, tax.TRACKINGNUMBER, tax.YEAR, Convert.ToDateTime(tax.TAXPERIODENDING));
+                    foreach (var form in tax.FORM)
+                    {
+                        int taxform_id = WriteTaxForm(server, taxtranscript_id, form);
+                        if (form.FORMTYPE == "1040" && null != form.FORM1040HEADER)
+                        {
+                            Write1040(server, taxform_id, form.FORM1040HEADER);
+                        }
+                        foreach (var section in form.SECTIONS)
+                        {
+                            int taxsection_id = WriteSection(server, taxform_id, section);
+                            foreach (var vals in section.SECTIONFIELDS)
+                            {
+                                WriteSectionValues(server, taxsection_id, vals);
+                            }
+                        }
+                    }
+                }
+            }
+        
+        }
+
+        public static void Write1040(string server, int taxform_id,TaxTranscript.TaxTranscriptsEIVTAXTRANSCRIPT_V100FORMFORM1040HEADER f)
+        {
+            string sql = "insert into CRTax1040 (name,filing_status,wages_salary_tips,taxable_interest_income,tax_exempt_interest,business_income_loss,capital_gains_or_loss,rent_or_royalty_partnership_estate,total_income,adjusted_gross_income,taxform_id) output inserted.id values (@name,@filing_status,@wages_salary_tips,@taxable_interest_income,@tax_exempt_interest,@business_income_loss,@capital_gains_or_loss,@rent_or_royalty_partnership_estate,@total_income,@adjusted_gross_income,@taxform_id)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@name", f.NAMESHOWNONRETURN);
+            q.AddParameter("@filing_status", f.FILINGSTATUS);
+            q.AddParameter("@wages_salary_tips", f.WAGESSALARIESTIPSETC.Replace("$", "").Replace(",",""));
+            q.AddParameter("@taxable_interest_income", f.TAXABLEINTERESTINCOME.Replace("$", "").Replace(",", ""));
+            q.AddParameter("@tax_exempt_interest", f.TAXEXEMPTINTEREST.Replace("$", "").Replace(",", ""));
+            q.AddParameter("@business_income_loss", f.BUSINESSINCOMEORLOSS.Replace("$", "").Replace(",", ""));
+            q.AddParameter("@capital_gains_or_loss", f.CAPITALGAINSORLOSS.Replace("$", "").Replace(",", ""));
+            q.AddParameter("@rent_or_royalty_partnership_estate", f.RENTROYALTYPARTNERSHIPESTATE.Replace("$", "").Replace(",", ""));
+            q.AddParameter("@total_income", f.TOTALINCOME.Replace("$", "").Replace(",", ""));
+            q.AddParameter("@adjusted_gross_income", f.ADJUSTEDGROSSINCOME.Replace("$", "").Replace(",", ""));
+            q.AddParameter("@taxform_id", taxform_id);
+            q.ExecuteSingle<int>();
+        }
+        public static int InsertTaxTranscript(string server, int creditfile_id,long tracking_number,int year,DateTime tax_period_ending)
+        {
+            string sql = "insert into CRTaxTranscripts (creditfile_id,year,tracking_number,tax_period_ending) OUTPUT inserted.id values (@creditfile_id,@year,@tracking_number,@tax_period_ending)";
+            Query q = new Query(sql, server);
+            q.AddParameter("@creditfile_id", creditfile_id);
+            q.AddParameter("@year",year);
+            q.AddParameter("@tracking_number", tracking_number);
+            q.AddParameter("@tax_period_ending",tax_period_ending);
+            return q.ExecuteSingle<int>();
+        }
+        public static void ClearTaxPull(string server, int filenum)
+        {
+            string sql = "exec dbo.ClearTaxOutput @filenum = @filenum";
+            Query q = new Query(sql, server);
+            q.AddParameter("@filenum", filenum);
+            q.Execute();
+        }
+        public static void UpdateCRRequestStatus(string server,int request_id,string status,string status_description,string xml)
+        {
+            string sql = "update CRQueue set status = @status,last_updated = GetDate(), status_description = @status_description,@xml=@xml where id = @request_id";
+            Query q = new Query(sql, server);
+            q.AddParameter("@request_id", request_id);
+            q.AddParameter("@status", status);
+            q.AddParameter("@status_description", status_description);
+            q.AddParameter("@xml", xml);
+            q.Execute();
+        }
+    }
+}

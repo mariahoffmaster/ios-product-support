@@ -1,0 +1,246 @@
+=== BADGER KB: LOGIC — DAILY ASSET FUNDING (UF2 / TCB WAREHOUSE LINE) ===
+Responsible Department: Investment Operations
+Last Updated: May 2026
+============================================================
+
+OVERVIEW
+--------
+Daily asset funding is the process by which newly originated HEAs (Home Equity Agreements)
+are funded and wires are sent to title companies on behalf of customers. Funding comes from
+two sources that together make up the Total Investment Payment:
+
+  1. TCB Draw (90%) — an advance from the Texas Capital Bank (TCB) warehouse line to the
+     UF2 Funding Account.
+  2. Unlock Haircut (10%) — Unlock's own funds, moved from the UPS balance sheet account
+     (x0292) into the UF2 Funding Account on funding day.
+
+The UF2 Draw Request is Unlock's formal request to TCB to fund the advance portion.
+The net_wire_amt sent to title companies equals the sum of investment_payment for all
+assets being funded that day.
+
+
+KEY ACCOUNTS
+------------
+- UPS — Unlock balance sheet account at JPMorgan Chase (x0292). Source of the 10% haircut.
+- UF2 Funding Account — Texas Capital Bank account (x3836). Receives both the 90% TCB
+  advance and the 10% haircut. Wires to title companies go out from here.
+- UF2 Collections Account — TCB account (x3844). Used for incoming settlement wires,
+  margin calls, and cancellation fund receipts.
+- TCB Warehouse Line — Texas Capital Bank credit facility providing 90% of daily investment
+  payments. Kevin Nerney is the TCB account admin.
+
+
+KEY SYSTEMS AND TOOLS
+---------------------
+- Omni Dashboard — Daily Asset Funding List (unlocktechnologies.omniapp.co). Used to
+  confirm value date, asset count, and total investment payment sum.
+- BulkFunding Template (BulkFunding - Template.xls) — Excel workbook at:
+  C:\Users\[Name]\Unlock Technologies\Asset Management - Documents\05 - Initiatives\Bulk Funding
+  Contains the Lookup tab (Value Date), Email tab (asset list), and breakdown tabs for
+  each title company.
+- DBSync bat file — A:\03 - Applications\DbSync\run_max_new_dbsync.bat
+  Syncs the MAX database. Runtime ~3–5 minutes. Run after post closing confirms funding count.
+- Badger / UnlockToolkit — Provides Excel functions and buttons for each funding step.
+- DocuSign — Used to collect Kevin Nerney's signature on the TCB Draw Confirmation form.
+- Conveyance Offer Tape Generator — Excel file for generating the Conveyance Tape for
+  assets in NJ, PA, AZ, and MN (state-specific regulatory requirements).
+
+
+KEY TABLES
+----------
+- Fundings_New — Tracks funded/unfunded deals. Statuses: unfunded → Pending Funding → Funded.
+  Populated by the Haircut button; status flipped to Funded by the MAX button.
+- Trades — Receives journal entries created during the haircut/funding process.
+
+
+KEY TERMINOLOGY
+---------------
+- investment_payment — The full dollar amount Unlock pays for an HEA. Sum of all
+  investment_payments = net_wire_amt for the day.
+- net_wire_amt — The total wire amount sent to title companies. Equals sum of
+  investment_payment for all assets being funded.
+- oface — Original face value of the investment (same as investment_payment at origination).
+- value_date — The date wires are sent to title companies (the funding date).
+- effective_date — The deal effective date. Assets flagged red in BulkFunding if they
+  exceed 10 days past effective date (Column K check).
+- pipeline_label / customer_pipeline_label_max — Identifies the investor account the
+  asset belongs to.
+- Unlock Haircut — The 10% portion of investment_payment funded by Unlock from UPS.
+- TCB Advance / Draw — The 90% portion funded by Texas Capital Bank.
+- UF2 Draw Request — Formal borrowing base certification sent to TCB requesting the advance.
+- Draw Confirmation — DocuSign form returned by TCB; Kevin Nerney signs it to authorize release.
+- Pending Escrow Disbursement — MAX sub-stage for assets ready to be funded.
+- Pending Recording — MAX sub-stage after funding wires are sent.
+- CET — ClearEdge Title. Primary title company receiving funding wires.
+- FA — First American Title. Secondary title company.
+- FA Hawaii — First American Hawaii. Occasional deals only.
+- Suntera — Receives Investment Closing Statement (ICS) after MAX button is clicked.
+- ICS — Investment Closing Statement sent to Suntera upon funding.
+
+
+DAY 1 WORKFLOW (~3:30 PM EST the day before funding)
+-----------------------------------------------------
+1. Open Omni Daily Asset Funding List dashboard. Set date to next business date.
+   Confirm value date, asset count, and investment payment sum with #post_closing team.
+
+2. Open BulkFunding Template. On the Lookup tab, update Value Date (Cell A1) to next
+   business date.
+
+3. After post closing confirms funding count (green checkmark), run DBSync bat file:
+   A:\03 - Applications\DbSync\run_max_new_dbsync.bat (runtime ~3–5 min).
+
+4. Press Escrow Button (first button in the row).
+   - Populates the Email tab with next day's assets (replaces prior date's assets).
+   - Column J & K: formulas calculating days post effective date. Red flag if >10 days.
+   - After new assets are pulled, copy down or clear formulas/data from prior date.
+   - If static data is missing (state, address), flag to Mike Dean in #badger-ops.
+   - Verify accuracy against the count and total investment payment sent to post closing.
+   - NOTE: Checks in rows 33–36 read FALSE until Badger Money button is clicked.
+   - After completing checks, copy asset list into #post_closing message. Pull columns B–D
+     from row 39 (asset ID, customer name/address, investment payment) and reply to thread.
+
+5. Press Haircut Button.
+   - Calculates 10% Unlock haircut amount.
+   - Inserts assets into Fundings_New table.
+   - Creates journal entries in Badger and records them in the Trades table.
+   - Generates internal email to Kevin Nerney and Brian Kay.
+   - Send the generated email. Hyperlink the Omni dashboard link in the email.
+
+6. Press Badger Money Button (takes 3–5 minutes).
+   - Pulls Bulk Funding email data from Fundings_New unfunded deals.
+   - Updates center section values, flips checks to green.
+   - Populates four breakdown tabs: TCB, CET, FA, FA Hawaii.
+   - After completion, all four tabs should be populated with next date's asset tapes.
+   - FirstAm Hawaii tab may be empty (no deals is normal).
+   - Investigate any non-TRUE/green checks.
+
+7. Spot Check the 4 Breakdown Tabs.
+   - Confirm asset count and payment amount match the Email Tab summaries.
+   - Look for missing data (state, asset ID) in each tab.
+   - TCB Breakdown: Flag any lien positions greater than 3rd lien.
+
+8. Click Email Buttons (notifies TCB and title companies).
+   - Texas Capital Bank Star Button — Sends draw request. Kevin Nerney signature required
+     if approved. Include any exception requests.
+   - ClearEdge Title (CET) Button.
+   - First American (FA) Button.
+   - FA Hawaii Button (only if deals exist).
+
+9. Conveyance Step (while waiting for TCB draw request response).
+   - Open Conveyance Offer Tape Generator:
+     C:\Users\[Name]\...\Bulk Funding\Conveyance Offer Tape Generator.xlsx
+   - Verify: Draw Request Date (Offer Date) = Today; Draw Date (Funding Date) = Next Business Day.
+   - Click "Get Funding Conveyance Tape" to populate assets.
+   - Click "Generate Mail and Save" to generate email.
+   - Send the Outlook email.
+
+10. TCB Draw Request & DocuSign.
+    - Wait for Draw Request form emailed from TCB.
+    - Log into DocuSign. Copy previous Draw Confirmation. Replace document with today's form.
+    - Send to recipients with SET SIGNING ORDER:
+      [Kevin Nerney, Brian Kay, Jagat Shah, Ryan Thrift — set signing order].
+    - Include Omni link in message section.
+    - Click Next → Keep Form Data. Confirm name, title, signature slots carry over.
+    - Notification received once Kevin signs.
+
+
+DAY 2 WORKFLOW — HAIRCUT TRANSFER (~10:30 AM EST on funding date)
+-----------------------------------------------------------------
+Overview: Move 10% haircut from UPS account (x0292) into UF2 Funding Account. Once
+TCB draw hits UF2, initiate wires to title companies.
+
+1. Open BulkFunding Template. On Lookup tab, update Value Date (Cell A2) to =TODAY().
+
+2. Log into TCB website (securelogin.texascapitalbank.com) → Activity Center.
+
+3. Locate previous Haircut funds transfer from UPS → UF2. Copy it (Ellipses ⋯ → Copy).
+
+4. Confirm transfer direction: From UPS → To UF2.
+
+5. Delete prior amount; enter today's haircut amount.
+
+6. Confirm Transfer Date = Today.
+
+7. Update Memo: "Unlock UF2 Haircut YYYY.MM.DD".
+
+8. Click Transfer Funds. No approval required for internal transfers.
+
+
+DAY 2 — TITLE COMPANY WIRES (~11:30 AM EST)
+--------------------------------------------
+Trigger: TCB wires 90% advance to UF2 Funding Account (x3836). Notification via email
+or Slack. If TCB draw does not hit by 11am, inform post closing.
+
+Step 1: Draft Wires (in TCB portal)
+  - Go to Money Movement → ACH/Wire Transfers.
+  - Select template for correct title company. Ellipses ⋯ → Pay.
+  - Set Process Date = Today, Amount = Net Wire Amount.
+  - Message to Beneficiary format: "Unlock UF2 Funding YYYY.MM.D: [N] HEAs"
+  - Click Draft. Repeat for both title companies + FA Hawaii if applicable.
+
+Step 2: Update BulkFunding Template + Send Emails
+  - Press Unlock Logo Button.
+  - Generates 2 emails: one to WSFS UF2 split tape, one internal to Brian & Kevin.
+  - Include Omni link in the internal email.
+
+Step 3: Request Wire Approvals in #cash_management Slack Channel
+  - Deadline for approvals: 1:30 PM EST. Escalate to Jagat Shah if not approved by 1 PM.
+  - Wires require dual approval. Post message with asset counts, investment payments,
+    and total for each title company. Include Omni link.
+  - Required approvers: Jagat Shah, Kevin Nerney, Brian Kay.
+
+Step 4: Click MAX Button (after wires are approved)
+  - DO NOT click anything or use other applications until all emails are sent.
+  - This button:
+    - Attaches and sends Investment Closing Statement (ICS) to Suntera.
+    - Flips MAX SubStage to Pending Recording.
+    - Updates Fundings_New status to Funded.
+  - "FLiPpeD" confirmation = process complete.
+
+
+SPECIAL CASES
+-------------
+Exception Requests:
+  If an exception is needed, include it in the TCB email sent on Day 1. Exceptions can
+  cause next-day funding delays and change-of-docs situations.
+
+MAX Button Interruption:
+  If the MAX button is interrupted mid-run, determine which assets were flipped (ICS sent)
+  vs. which were not. On the Email tab in BulkFunding, clear (DO NOT delete) deals that
+  already flipped. Re-paste only the unflipped deals and re-run.
+
+
+FLOW OF FUNDS SUMMARY (from TCB Funding Flow diagrams)
+-------------------------------------------------------
+Closing Flow:
+  UPS (originator) → pledges Participation Certificate (PC) to UF2 (LLC) →
+  UF2 pledges PC to TCB → TCB issues Participation Interest (PI).
+
+Draw Flow:
+  UPS generates tape (Request Date -1 BD) → tape sent to TCB →
+  Unlock sends haircut (10%) to TCB →
+  TCB advances 90% to UF2 → UF2 wires to CET on Purchase Date →
+  TCB sends Draw Amount Certification (borrowing base) for Unlock to sign and return.
+
+Funding Flow of Funds Example:
+  Total Investment Payment: $100,000
+  TCB Advance (90%):        $90,000 → UF2
+  Unlock Haircut (10%):     $10,000 → UF2
+  Combined wire to CET:     $100,000
+  From CET to consumer (net): investment_payment - origination_fee - appraisal - payoffs
+  Origination Fee:          $4,900 (included in investment_payment, reimbursed via fee)
+  Appraisal Cost:           $395
+
+Certification Flow:
+  UPS sends tape to TCB (Pledge Date) → TCB delivers asset files electronically to WSFS
+  within 2 BD of Pledge Date → WSFS reviews and issues Exchange Certificate
+  (2 BD after receiving files + 2 BD for exceptions) → physical files delivered post-recording.
+
+
+RETIRED PROCESS — WSFS/JEFFRIES DAILY WIRE (DEPRECATED)
+---------------------------------------------------------
+NOTE: This process is retired as of the switch to TCB warehouse line funding. Do not use.
+Previously, a single daily wire was sent from WSFS/UFT1 Funding Account to ClearEdge Title
+under a DACA agreement. Approval required from Finance (Kevin Nerney, Brian Kay) and
+Investor Ops (Jagat Shah, Ryan Thrift). Bulk Funding template buttons: Escrow → Unlock Logo
+→ Badgers with Money → Email Blast → MAX. This process is no longer active.

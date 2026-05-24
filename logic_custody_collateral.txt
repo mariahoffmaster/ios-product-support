@@ -1,0 +1,278 @@
+=== BADGER KB: LOGIC — CREDIT AND SURVEILLANCE ===
+Responsible Department: Investment Operations
+Last Updated: May 2026
+============================================================
+
+OVERVIEW
+--------
+Credit and surveillance processes ensure Unlock maintains up-to-date credit scores and
+mortgage tradeline data for all active borrowers, monitors property lien changes weekly
+(Black Knight lien alerts), and keeps the Home Price Index (Zillow ZHVI) current for
+cashflow and pricing models.
+
+
+MONTHLY CREDIT PULL
+---------------------
+Purpose: Pull credit scores and reports for all borrowers on a monthly basis.
+
+Credit Model Schedule:
+  - Vantage (TransUnion): Every month (permanent setting as of 2025)
+  - FICO (TransUnion bureaus): Quarterly — month-end pulls in March, June, September, December
+  NOTE: CRS has confirmed Vantage is permanently set going forward until Unlock notifies
+  otherwise. No need to confirm model before each pull (as of 2025 update).
+
+Credit Provider: CRS MeridianLink (crs.meridianlink.com, use unlockarv account)
+
+KEY TABLES AND PROCS:
+  - dbo.CreditTradeLinesSimple — Stores parsed mortgage tradeline data.
+  - dbo.CreditTradeLinesRaw — All raw records from "Include Mortgage Tradelines.csv".
+  - dbo.CreditLoads — One record per credit load (single load_id per batch).
+  - dbo.CreditScores — Credit score records per asset/applicant.
+  - dbo.CRQueue — Queue of assets awaiting CRS API processing.
+  - EXEC dbo.ProcessTradeLinesSimple — Copies credit scores from CRScores to CreditScores.
+  - EXEC dbo.ProcessCreditReportNew — Processes new credit report data.
+  - EXEC dbo.sp_post_lien_alerts_proc — Cleanup proc run after lien alert load.
+
+Step 1: Upload Batch to CRS
+  In Badger → Admin tab → Generate Export CSV for upload.
+  Export file location: A:\01 - Surveillance\Credit Reporting\input
+  Confirm trailing fields in CSV are set to pull correct Bureau details.
+  Log into CRS. Select "Upload Batch Order" tab → Choose file → navigate to input file.
+  Confirm field mapping (TU only). Click Next to submit. Progress bar takes ~1 min to appear.
+  Review errors (Spanish characters in names, duplicates = acceptable). Click Begin.
+  Batch processing takes 2+ hours.
+
+Step 2: Download Output
+  Create output folder: ...\Credit Reporting\output\YYYYMMDD
+  Download "Include Mortgage TradeLines" → rename to "Include Mortgage Tradelines.csv"
+  Download "Credit Data Only" → rename to "Credit Data Only.csv"
+  Email CRS Support (support@crscreditapi.com) for supplemental "Unlock ARV [Month YYYY].xlsx"
+  Save all to output folder.
+
+Step 3: Verify Mortgage Tradelines Count
+  Open Include Mortgage Tradelines.csv in TEXT EDITOR (not Excel — Excel causes conversions).
+  Count unique File IDs. Count should be slightly increasing month over month.
+  (Reference: recent months had 11k–13k unique IDs. If half that, file may be incomplete.)
+  Fix missing Loan Numbers by cross-referencing input CSV for matching last names,
+  copying RefNumber values back to blank Loan Number fields.
+
+Step 4: Load Data
+  Make copy of previous month's Credit Conversion Template.xlsb to current month output folder.
+  Open Credit Conversion Template.xlsb.
+
+  DISABLE triggers before loading (run in SQL client):
+    DISABLE TRIGGER [dbo].[trg_CreditTradeLinesSimple] ON [dbo].[CreditTradeLinesSimple]
+    DISABLE TRIGGER [dbo].[trg_CreditScores] ON [dbo].[CreditScores]
+
+  In Badger → Admin tab → Load Credit button → load "Include Mortgage Tradelines.csv".
+  Load takes ~20+ minutes. Progress bar shows ETA. Badger may appear frozen.
+  Wait for completion popup.
+  If popup does not appear, the load may have failed. Run manually:
+    EXEC dbo.ProcessCreditReports @load_id = [load_id], @clear=true
+
+  In Credit Conversion Template.xlsb:
+  - "Credit Data - PASTE" tab: paste contents of Credit Data Only.csv
+  - "ARV Data - Paste" tab: paste ARV data from "Unlock ARV [Month].xlsx" into cell D1 onwards.
+    Copy formulas in columns A & B down.
+  - "Loads" tab: run SQL in cell I2, copy results to table (cell A1 down).
+  - "CREDITFILES" tab: run SQL in cell I3, paste data to left table (clear first).
+    CREDITFILES stopped loading back in April 2024; no LOAD_IDs for this table.
+  - "New" tab: ensure all formulas are copied all the way down.
+  - Filter on load_id "#N/A" rows (applicants without a mortgage tradeline yet).
+  - Copy creditfile IDs (column C) to CREDITFILES tab column AA, remove duplicates.
+  - Copy distinct list to L14. Update date in cell K13 to credit process date.
+  - Copy down formulas — generates SQL INSERTs to dbo.CRQueue table.
+  - Re-run SQL in I3 on CREDITFILES tab; copy to A1 — confirm "#N/A"s are removed from NEW tab.
+
+  RE-ENABLE triggers:
+    ENABLE TRIGGER [dbo].[trg_CreditTradeLinesSimple] ON [dbo].[CreditTradeLinesSimple]
+    ENABLE TRIGGER [dbo].[trg_CreditScores] ON [dbo].[CreditScores]
+
+  Run update statements:
+    UPDATE CreditTradeLinesSimple SET LOAD_ID=LOAD_ID
+    UPDATE CREDITSCORES SET ASOF_DELETE=ASOF_DELETE
+
+  Run processing procs (run twice):
+    EXEC dbo.ProcessTradeLinesSimple
+    EXEC dbo.ProcessCreditReportNew
+
+Step 5: Process CRS Queue (API call to retrieve XML/PDF/HTML for each asset)
+  IMPORTANT: Your IP must be registered on CRS site under "My Account" using the unlockapi
+  account. After logging in, click "My Account" to verify IP registration.
+  In Badger → Trash menu → "Process CRS Queue"
+  This takes a long time. Multiple Badger instances can be run in parallel to process faster.
+  If errors occur, restart Badger and re-run.
+  After completion, run again:
+    EXEC dbo.ProcessTradeLinesSimple
+
+Step 6: Check Credit Load
+  Run: A:\00 - Operations\Scripts\Credit Check.sql
+  Check percentage completion:
+    SELECT total, remaining, completed,
+           FORMAT((remaining * 1.0 / total),'P2') [% remaining],
+           FORMAT((completed * 1.0 / total),'P2') [% completed]
+    FROM (
+      SELECT COUNT(*) [total],
+             SUM(CASE WHEN processed=0 THEN 1 ELSE 0 END) [remaining],
+             SUM(CASE WHEN processed=0 THEN 0 ELSE 1 END) [completed]
+      FROM dbo.CRQueue WHERE asOf >= 'YYYY-MM-DD'
+    ) t
+
+Step 7: Final Reports via ReportRunner
+  Post Credit Check report (email to portfoliomanagement@unlock.com):
+    ReportRunner.exe ... -sql "PostCreditLoad.sql" ... -slacksubject "team_uam"
+
+  Monthly DLQ Summary:
+    ReportRunner.exe ... -sql "DLQSummaryByAccount.sql"
+    -subject "Month End DLQ Summary by Account as-of @today"
+  Post message in appropriate Slack channel after DLQ report runs.
+
+
+MAP PROPOSED CREDIT TRADE LINES
+---------------------------------
+Background: New assets need their mortgage tradelines mapped to the correct account.
+An automated report runs every Tuesday proposing mappings based on three criteria:
+  1. Monthly Payment amount (threshold ± $10 default)
+  2. Credit Line Balance (threshold ± $5,000 default)
+  3. Account Open Date (threshold ± 30 days default)
+
+Trigger: Report and Slack message in #credit_mapping_committee channel.
+Subject: "[N] Proposed Mappings for [M] Unmapped Tradelines | Thresholds: ..."
+Justin Burke on the credit team confirms which mappings to apply.
+
+Steps:
+1. Open SQL file: TradeLineMapping.sql
+2. Uncomment variables at top and update thresholds to match Justin's confirmation:
+   declare @input_payment_threshold int = 1000  -- or as confirmed
+   declare @input_balance_threshold int = 5000
+   declare @input_open_date_threshold int = 5
+
+3. Confirm the update bit is set to 1:
+   declare @update bit = 1
+
+4. Uncomment the Automap section (executes UPDATE to dbo.Debt table):
+   UPDATE d SET craccount_id = t.[TradeLine.Proposed_CRAccountId]
+   FROM Debt d JOIN #updates t ON d.id = t.[Badger.DebtId]
+   WHERE t.[TradeLine.Proposed_CRAccountId] IS NOT NULL
+   AND d.asset_id NOT IN ('22266475465937','56455039666710')  -- excluded assets
+
+
+LIEN ALERTS (WEEKLY AUTOMATED — CURRENT PROCESS)
+--------------------------------------------------
+Since August 2025, the lien alert process is automated via Python and Windows Task Scheduler
+on the UAM VM. Manual steps are only needed to assess results and forward to Servicing team.
+
+Automated Actions (Fridays 3:00 PM EST):
+  LienAlertsRefreshGenerateAndUpload.py:
+  - Pulls active asset population from UAM database (active + terminated within last 3 months).
+  - Renames export to "Active HEI Portfolio.refresh" (required by Black Knight).
+  - Uploads to Black Knight SFTP inbound folder: goanywherecltnr.bkiconnect.com
+  - Sends Slack message to #ninja_life when complete.
+  Note: File is consumed immediately by Black Knight; disappears from inbound within 1 min.
+  If formatting issues, file moves to error folder. Re-uploading overwrites safely.
+
+Automated Actions (Mondays 7:15 AM EST — after Black Knight batch at ~6:50 AM EST):
+  LienAlertsDownloadAndLoad.py:
+  - Downloads "Active HEI Portfolio.csv.zip" from SFTP outbound folder.
+  - Unzips, makes 4 known record adjustments for load issues.
+  - Re-zips and renames to dated file (e.g., 08-04-2025.zip).
+  - Copies to A:\01 - Surveillance\Lien Alert\import.
+  - Calls DBLoader bat file (picks up dated zip).
+  - DBLoader sends SURVEILLANCE email via ReportRunner (subject: "[N] Surveillance ALERTS").
+  - Runs EXEC dbo.sp_post_lien_alerts_proc after load completes.
+  - Sends Slack message when complete.
+
+Manual Operations Steps (Mondays):
+1. Check latest load count (should be slightly higher than previous week):
+   SELECT LALoads.id AS Load_id, COUNT(*) AS [Rec Count]
+   FROM LienAlert, LALoads
+   WHERE LienAlert.load_id = LALoads.id
+   GROUP BY LALoads.id
+   ORDER BY LALoads.id DESC
+
+2. Open Surveillance email from Badger. Confirm NEW ALERTS count in subject is different
+   from previous week (not a duplicate load). Check names in body are different.
+
+3. Forward results to Servicing team:
+   - Open surveillance email → click Forward.
+   - Remove "FW:" from subject.
+   - Add recipients: Nick Carnot, Brandan Carlson.
+   - CC: Badger, other ops team members.
+
+4. Post in #lien_alerts Slack channel:
+   "@Nick Carnot @Brandan Carlson sent YYYY.MM.DD Lien Alerts report"
+
+
+LIEN ALERTS (MANUAL PROCESS — LEGACY, FOR REFERENCE)
+------------------------------------------------------
+The manual process is documented for reference in case automation fails.
+Weekly: On Fridays at 3 PM EST, receive 3 emails with CSV attachments:
+  (a) [N] Lien Alert Portfolio Update - REMOVE
+  (b) [N] Lien Alert Portfolio Update - ADD
+  (c) [N] Lien Alert Portfolio Update - ADD/REFRESH Full Population
+Save attachments to: C:\Data\lien_alert\[dated folder] (YYYYMMDD format).
+Rename the full population file by removing date prefix and everything after "refresh":
+  "Active HEI Portfolio.refresh"
+Upload to Black Knight SFTP inbound folder: goanywherecltnr.bkiconnect.com
+(Individual user SFTP accounts required; contact Black Knight to obtain.)
+After Monday 6:30 AM batch, download output zip from outbound folder.
+Extract all. Open Active HEI Portfolio_out.csv in TEXT EDITOR (not Excel).
+Make 4 known record adjustments (specific asset_ids with BLOCK field formatting issues).
+Check Active HEI Portfolio_err.csv for errors (duplicates, etc.).
+Re-zip all files; rename to MM-DD-YYYY.zip.
+Copy to A:\01 - Surveillance\Lien Alert\import.
+Run: DBLoader lienalert.bat
+Monitor load with query. After completion, run EXEC dbo.sp_post_lien_alerts_proc.
+Forward surveillance email to Nick Carnot and Brandan Carlson.
+
+
+LOAD MONTHLY ZILLOW HPI (ZHVI)
+---------------------------------
+Purpose: Upload Zillow's latest monthly Home Price Index data for cashflow and pricing models.
+Cadence: Monthly. Available ~12th–16th of each month.
+
+Source: https://www.zillow.com/research/data/
+Download: ZHVI "All Homes" at "ZIP Code" level.
+
+Steps:
+1. Download latest ZHVI CSV. Check that the new month column is in the file
+   (data for prior month should be in the last column).
+
+2. Rename file: add date and "Data" to filename.
+   Example: "Zip_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month - 20241213 Data.csv"
+
+3. Copy file to: A:\05 - Initiatives\Zillow HPI\
+
+4. Open Zillow Template.xlsb.
+
+5. Open latest ZHVI CSV in Excel; click Convert in popup.
+
+6. Clear column B before pasting data (prevents premature load trigger).
+
+7. DISABLE trigger for performance:
+   DISABLE TRIGGER [dbo].[trg_HPI] ON [dbo].[HPI]
+
+8. Copy all data including headers (Ctrl-A) from CSV to template at field C4 (as text).
+
+9. Update formula in column A for new date column range.
+   Go to last right columns; make sure UPDATE formula includes new date columns.
+   Copy formula down; verify referenced ranges are correct.
+
+10. This executes UpdateZillowBulk (via UnlockToolkit). Runtime ~20 minutes.
+
+11. Monitor load:
+    SELECT CONVERT(datetime,CONVERT(varchar(10),asOf,101),101), COUNT(*)
+    FROM HPI WHERE hpitype_id = 1
+    GROUP BY CONVERT(datetime,CONVERT(varchar(10),asOf,101),101)
+    ORDER BY CONVERT(datetime,CONVERT(varchar(10),asOf,101),101) DESC
+    Count should be close to previous month's count.
+
+12. RE-ENABLE trigger after load completes:
+    ENABLE TRIGGER [dbo].[trg_HPI] ON [dbo].[HPI]
+    Run update to refresh HPITypes table:
+    UPDATE HPI SET zip = zip WHERE update_time >= 'YYYY-MM-DD'
+
+13. Notify team member handling month-end tape that they can proceed.
+
+KEY TABLE: dbo.HPI — Zillow HPI data. hpitype_id = 1 for Zillow ZHVI.
+KEY TRIGGER: trg_HPI — Must be disabled during bulk load for performance.

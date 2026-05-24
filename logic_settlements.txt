@@ -1,0 +1,193 @@
+=== BADGER KB: LOGIC — REMITTANCE AND INVESTOR REPORTING ===
+Responsible Department: Investment Operations
+Last Updated: May 2026
+============================================================
+
+OVERVIEW
+--------
+Remittance reports are monthly reports Unlock provides to investors that track the transfer
+of funds from one party to another as required by each Asset Management Agreement (AMA).
+They detail the collections from settlements each month for each trust, and the waterfall
+payments made from those collections per the trust's AMA.
+
+Unlock also provides monthly position tapes, borrowing base tapes (for LibreMax/EWB),
+and equity balance certifications (for LibreMax State Street reporting).
+
+
+KEY INVESTORS AND TRUSTS
+-------------------------
+- SGALT A/B/C — SALUDA GRADE ALTERNATIVE LOAN TRUST 2021-1, Series A/B/C
+  Remit Date: 15th calendar day or next Business Day
+- LEX 1 / LEX 2 — UNLOCK LEX RESIDENTIAL INVESTMENTS TRUST 2022-1 / 2022-2
+  Remit Date: 15th calendar day or next Business Day
+- D2 — UNSO FUNDING TRUST I
+  Reporting Date: 22nd calendar day or next Business Day
+  Payment Date: 25th calendar day or next Business Day
+- UNLOK 2022-1 — UNLOCK HOLDINGS I TRUST
+  Reporting Date: 15th calendar day or next Business Day
+  Remit Date: 2 Business Days before Payment Date
+  Payment Date: 25th calendar day (or next business day)
+- UNLOK 2023-1 — UNLOCK HOLDINGS II TRUST
+  Same schedule as UNLOK 2022-1
+- UNLOK 2024-1, UNLOK 2024-2, UNLOK 2025-1, UNLOK 2025-2, UNLOK 2025-3
+  Schedule details in Asset Management Agreements
+
+
+KEY TERMINOLOGY
+---------------
+- AMA — Asset Management Agreement. Governs fees and waterfall payments per trust.
+- Remittance — Monthly transfer of settlement collections through the investor waterfall.
+- AM Fee — Asset Management Fee paid by investor to Unlock.
+- Disposition Fee — Fee paid on settlement/disposition of an asset.
+- Incentive Fee — Performance-based fee per AMA terms.
+- Premium Recapture — Recovery of premium paid on assets at origination.
+- Settlement Fee — $500 fee per settlement (new; added to remittance in updated process).
+- Lien Release Fee — $75 per settlement.
+- Reimbursable Expenses — Costs Unlock incurred managing the assets, reimbursed by investor.
+- Exercise Value — Investor's portion of settlement proceeds per HEA terms.
+- Excess Servicing / MSR — Sold mortgage servicing rights. Excess servicing fees flow to
+  MSR Purchaser Account (SGOF) after investor remittance.
+- Trustee — Third-party fiduciary appointed to represent investor's interests.
+- Administrator — Manages administrative tasks on behalf of investor.
+- Directional Letter — Document instructing the Trustee to move funds (used for auction bids).
+- EWB — East West Bank. Provides borrowing base facility for LibreMax.
+- Borrowing Base — LibreMax/EWB calculation requiring monthly position tape and defaults tape.
+- State Street — Custodian/administrator for LibreMax equity balance reporting.
+- SGOF — Saluda Grade MSR purchaser account. Receives excess servicing post-remittance.
+
+
+REMITTANCE FLOW OF FUNDS
+--------------------------
+(From Remittance Flow of Funds diagram — New Process)
+
+1. Unlock sends each investor a monthly collections report on the 15th of each month.
+   Report includes breakdown of:
+   - AM Fees
+   - Disposition Fees
+   - Incentive Fees
+   - Premium Recapture
+   - Settlement Fees (new)
+   - Reimbursable Expenses
+
+2. Investors remit payment to Unlock by the 25th of the month.
+   Funds flow: Investor Trust Holdings Account → UAM
+
+3. Once all investor remits are received, Unlock prepares MSR collection report.
+   Excess servicing fees transferred to MSR Purchaser Account (SGOF).
+
+4. Retained fees + Settlement Fees transferred to UAM TCB account.
+
+5. All funds flow to: UAM MSR Clearing Account (TCB) for distribution.
+
+
+LIBREMAX BORROWING BASE
+------------------------
+LibreMax provides borrowing base information to East West Bank (EWB) monthly.
+Unlock provides two tapes each month: (1) position tape, (2) defaults tape.
+
+Accounts: LEX 1 (account 7) and LEX 2 (account 8).
+
+Position Tape Steps:
+1. Run script: A:\00 - Operations\Scripts\New Tape Format v8-LibreMax Borrowing Base.sql
+   Set cutoff date and confirm account filter:
+     SET @cutoff = 'MM/DD/YYYY'
+     insert into @accounts (item) values (7) -- LEX 1
+     insert into @accounts (item) values (8) -- LEX 2
+
+2. Copy results to Excel. Remove any duplicate asset IDs (from multiple default records).
+
+3. Copy format from previous month's tape.
+   Example: A:\04 - Investors\LEX1\Monthly Reporting\202411\
+            LEX 1 - Borrowing Base Position Tape - 11.30.2024.xlsx
+
+4. Split tape for LEX 1 and LEX 2 assets; copy to respective month-end folders.
+
+Defaults Tape Steps:
+1. Run script: A:\00 - Operations\Scripts\LibreMax-BorrowingBase-Defaults.sql
+   Produces list of defaults for both LEX 1 and LEX 2 accounts.
+
+2. Copy to Excel. Update "Chapter/Type" values using this mapping:
+   Tape Name                    → Update to
+   Senior Mortgage Foreclosure  → FCL - Senior Lender
+   Chapter 7 Bankruptcy         → BK - 7
+   Chapter 13 Bankruptcy        → BK - 13
+   Property Tax Foreclosure     → FCL - Property Tax
+   Federal Tax Liens            → Federal Tax Liens
+
+3. Copy format from previous tape. Both LEX 1 and LEX 2 can stay on the same tape.
+
+4. Update "Closure Type" for any defaults with a cure date:
+   - Bankruptcies: Standard Discharge
+   - FCLs: Confirm with Special Servicing team ("Notice of Rescission" or "Standard Discharge")
+
+Tape file save location: A:\04 - Investors\LEX1\Monthly Reporting\[YYYYMM]\
+
+
+LIBREMAX EQUITY BALANCES REPORTING
+-------------------------------------
+Context: Unlock is required to verify the equity shares owned by LibreMax and have
+them signed by a company representative. Sent to State Street monthly.
+
+Equity ownership amounts (confirm with Kevin Nerney):
+  LibreMax Structured Opportunities (ECI) Master Fund I, LP:  276,210
+  LibreMax Structured Opportunities (ECI) Master Fund II, LP: 184,130
+
+PDF templates:
+  LEX 1: A:\04 - Investors\LEX1\LibreMax Structured Opportunities (ECI) Master Fund I, LP (equity position).pdf
+  LEX 2: A:\04 - Investors\LEX2\LibreMax Structured Opportunities (ECI) Master Fund II, LP (equity position).pdf
+
+Steps:
+1. Confirm current equity ownership amount with Kevin Nerney.
+2. Upload PDFs to DocuSign.
+3. Add: close date of the month, signature, name, and title.
+4. Send to Kevin Nerney for signing.
+5. Send completed signed docs:
+   To: Irena Limanowska (ILimanowska@StateStreet.com)
+   CC: Tyler Cignarella (tcignarella@libremax.com), APolay@libremax.com,
+       LibremaxNAV@statestreet.com, Jim Riccitelli (jim@unlock.com),
+       Kevin Nerney (kevin@unlock.com), Ryan Thrift (ryan.thrift@unlock.com),
+       Jagat Shah (Jagat.Shah@unlock.com)
+
+
+AUCTION BID FUNDS PROCESS
+---------------------------
+When an Unlock asset is scheduled for foreclosure, bid funds must be secured for auction.
+
+Glossary:
+  - Directional Letter: Document instructing Trustee to move funds.
+  - Trustee: Third-party fiduciary for the investor.
+  - Administrator: Manages administrative tasks on behalf of investor.
+  - AMA: Asset Management Agreement.
+
+Step 1: Prepare Directional Letter (Portfolio Management)
+  Navigate to 04 - Investors folder → Account folder → Directional Letter template.
+  Update: dollar amount, date funds needed by, asset ID.
+  Send for signature via DocuSign to: Unlock CFO and authorized Administrator signatory.
+  Note: Directional Letter may not be required for non-securitization accounts. Check AMA.
+
+Step 2: Generate Invoice (Portfolio Management)
+  Use: Invoice Template - UAM Reimbursable Expense.xlsm
+  Enter details, save as PDF. Upload to "Invoices" folder in Account folder.
+
+Step 3: Request Bid Funds from Trustee (Portfolio Management)
+  Draft email to Trustee requesting wire to Unlock.
+  Attach: signed Directional Letter (if applicable), Invoice PDF, target wire date.
+  CC: Chief Capital Officer, Chief Credit Officer, Head of Customer Success,
+      Head of Treasury & Investment Operations, Director of Capital Markets,
+      Head of Portfolio Management, Special Servicing Lead,
+      Investment Operations and Treasury Lead, Treasury Team.
+
+Step 4: Request Bid Wire Setup (Portfolio Management, after funds confirmed received)
+  Investment Operations provides Fed confirmation number.
+  PM team member sends wire setup request to Billing specifying:
+  - Wire amount
+  - Recipient (auction representative)
+  - Purpose of funds
+  - Targeted processing date
+  Attach recipient's wire instructions. Same CC list as Step 3.
+  Notify Investment Operations once wire setup request sent.
+
+Step 5: Release of Wire (Investment Operations / Financial Operations)
+  Investment Operations obtains approvals.
+  Once approved and executed, provides Fed confirmation number to PM team.
+  Confirms funds sent to auction representative.
