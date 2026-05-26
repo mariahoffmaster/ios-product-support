@@ -1,0 +1,4285 @@
+=== BADGER KB: API_LAYER ===
+GraphQL-V2 API + SignalRService + CoreLogicLib + Analytics
+============================================================
+
+
+
+--- FILE: GraphQL-V2\GraphQL-V2\Program.cs ---
+namespace GraphQL
+{
+    
+    public class GraphQLProgram
+    {
+        public GraphQLHttpClient _client;
+
+        public GraphQLProgram(string access_token)
+        {
+            
+            _client = new GraphQLHttpClient("https:
+            _client.HttpClient.DefaultRequestHeaders.Add("Authorization", "JWT " + access_token);
+            
+
+            
+            
+
+        }
+
+        
+        public class TokenResponse
+        {
+            public string Refresh { get; set; }
+            public string Access { get; set; }
+        }
+
+        public static async Task<string> GetAccessTokenAsync(string userName, string password)
+        {
+            using (var client = new HttpClient())
+            {
+                var url = "https:
+                var payload = new
+                {
+                    username = userName,
+                    password = password
+                };
+                var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
+
+                var response = await client.PostAsync(url, content);
+                response.EnsureSuccessStatusCode();
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(responseContent);
+
+                return tokenResponse.Access;
+            }
+        }
+
+
+
+        
+
+        public static List<string> GetAllAssetIds()
+        {
+            string server = "UAM_REPORTING";
+            string query = "SELECT max_id FROM vAssetsEx";
+            Query q = new Query(query, server);
+
+            DataTable result = q.ExecuteTable();
+            List<string> assetIds = new List<string>();
+
+            foreach (DataRow row in result.Rows)
+            {
+                assetIds.Add(row["max_id"].ToString());
+            }
+
+            return assetIds;
+        }
+
+
+
+        static async Task Main(string[] args)
+        {
+            
+            
+            
+
+            Constants.SetEnvironment(Constants.GetEnvironment("DEV"));
+            
+
+            
+
+            
+            
+
+            
+            Console.WriteLine($"Reconciling tables...");
+
+            ReconcileTables();
+
+            Thread.Sleep(100000); 
+        }
+
+        
+
+        
+        public static void TruncateGraphqlTables()
+        {
+            string server = "UAM_REPORTING"; 
+            string[] tablesToTruncate = new string[]
+            {
+        "Assets_graphql",
+        "PropertyInfo_graphql",
+        "Applicants_graphql",
+        "AssetApplicantMap_graphql",
+        "Underwriting_graphql",
+        "Debt_graphql",
+        "ReconciliationDifferences"
+            };
+
+            foreach (string table in tablesToTruncate)
+            {
+                string truncateSql = $"DELETE FROM {table};";
+                try
+                {
+                    Query q = new Query(truncateSql, server);
+                    q.Execute();
+                    Console.WriteLine($"Successfully truncated table: {table}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error truncating table {table}: {ex.Message}");
+                }
+            }
+        }
+        public static void ReconcileTables()
+        {
+            string server = "UAM_REPORTING"; 
+            string[] tablesToReconcile = new string[]
+            {
+        "Assets",
+        "PropertyInfo",
+        "Applicants",
+        "AssetApplicantMap",
+        "Underwriting",
+        "Debt"
+            };
+
+            List<string> differences = new List<string>();
+            differences.Add("Table,Column,AssetId,GraphqlValue,NonGraphqlValue");
+
+            foreach (string table in tablesToReconcile)
+            {
+                Console.WriteLine($"Reconciling table {table}...");
+                string graphqlTable = table + "_graphql";
+                string nonGraphqlTable = table;
+
+                string fetchGraphqlDataSql = $"SELECT * FROM {graphqlTable};";
+
+                string fetchNonGraphqlDataSql = $"SELECT * FROM {nonGraphqlTable} WHERE asset_id = @key;";
+                if (table.Equals("Assets"))
+                {
+                    fetchNonGraphqlDataSql = $"SELECT * FROM {nonGraphqlTable} WHERE ID = @key;";
+                }
+                else if (table.Equals("Applicants"))
+                {
+                    fetchNonGraphqlDataSql = $"SELECT * FROM {nonGraphqlTable} WHERE email = @key;";
+                }
+                else if (table.Equals("AssetApplicantMap"))
+                {
+                    fetchNonGraphqlDataSql = $"SELECT * FROM {nonGraphqlTable} WHERE asset_id = @asset_id AND applicanttype_id = @applicanttype_id;";
+                }
+                else if (table.Equals("Debt"))
+                {
+                    fetchNonGraphqlDataSql = $"SELECT * FROM {nonGraphqlTable} WHERE asset_id = @asset_id AND lien_position = @lien_position;";
+                }
+
+                Query fetchGraphqlDataQuery = new Query(fetchGraphqlDataSql, server);
+                DataTable graphqlData = fetchGraphqlDataQuery.ExecuteTable();
+
+                foreach (DataRow graphqlRow in graphqlData.Rows)
+                {
+                    string key = "";
+                    Query fetchNonGraphqlDataQuery = new Query(fetchNonGraphqlDataSql, server);
+                    if (table.Equals("Assets"))
+                    {
+                        key = graphqlRow["id"].ToString();
+                        fetchNonGraphqlDataQuery.AddParameter("@key", key);
+                    }
+                    else if (table.Equals("Applicants"))
+                    {
+                        key = graphqlRow["email"].ToString();
+                        fetchNonGraphqlDataQuery.AddParameter("@key", key);
+                    }
+                    else if (table.Equals("AssetApplicantMap"))
+                    {
+                        string assetId = graphqlRow["asset_id"].ToString();
+                        string applicantTypeId = graphqlRow["applicanttype_id"].ToString();
+                        fetchNonGraphqlDataQuery.AddParameter("@asset_id", assetId);
+                        fetchNonGraphqlDataQuery.AddParameter("@applicanttype_id", applicantTypeId);
+                        key = $"{assetId}-{applicantTypeId}";
+                    }
+                    else if (table.Equals("Debt"))
+                    {
+                        string assetId = graphqlRow["asset_id"].ToString();
+                        string lienPosition = graphqlRow["lien_position"].ToString();
+                        fetchNonGraphqlDataQuery.AddParameter("@asset_id", assetId);
+                        fetchNonGraphqlDataQuery.AddParameter("@lien_position", lienPosition);
+                        key = $"{assetId}-{lienPosition}";
+                    }
+                    else
+                    {
+                        key = graphqlRow["asset_id"].ToString();
+                        fetchNonGraphqlDataQuery.AddParameter("@key", key);
+                    }
+
+                    DataTable nonGraphqlData = fetchNonGraphqlDataQuery.ExecuteTable();
+
+                    if (nonGraphqlData.Rows.Count > 0)
+                    {
+                        DataRow nonGraphqlRow = nonGraphqlData.Rows[0];
+                        foreach (DataColumn column in graphqlData.Columns)
+                        {
+                            string columnName = column.ColumnName;
+                            string graphqlValue = graphqlRow[columnName]?.ToString() ?? string.Empty;
+                            string nonGraphqlValue = nonGraphqlRow[columnName]?.ToString() ?? string.Empty;
+
+                            if (columnName.Equals("update_time") || columnName.Equals("update_by") || columnName.Equals("id"))
+                            {
+                                continue;
+                            }
+
+                            if (graphqlValue != nonGraphqlValue && !graphqlValue.Equals(nonGraphqlValue))
+                            {
+                                differences.Add($"{table},{columnName},{key},\"{graphqlValue.Replace("\"", "\"\"")}\",\"{nonGraphqlValue.Replace("\"", "\"\"")}\"");
+
+                                
+                                string insertDifferenceSql = @"
+                        INSERT INTO ReconciliationDifferences (TableName, ColumnName, AssetId, GraphqlValue, NonGraphqlValue)
+                        VALUES (@TableName, @ColumnName, @AssetId, @GraphqlValue, @NonGraphqlValue);";
+
+                                Query insertDifferenceQuery = new Query(insertDifferenceSql, server);
+                                insertDifferenceQuery.AddParameter("@TableName", table);
+                                insertDifferenceQuery.AddParameter("@ColumnName", columnName);
+                                insertDifferenceQuery.AddParameter("@AssetId", key);
+                                insertDifferenceQuery.AddParameter("@GraphqlValue", graphqlValue);
+                                insertDifferenceQuery.AddParameter("@NonGraphqlValue", nonGraphqlValue);
+                                insertDifferenceQuery.Execute();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        differences.Add($"{table},ALL,{key},Row exists,Row does not exist");
+
+                        
+                        string insertDifferenceSql = @"
+                INSERT INTO ReconciliationDifferences (TableName, ColumnName, AssetId, GraphqlValue, NonGraphqlValue)
+                VALUES (@TableName, 'ALL', @AssetId, 'Row exists', 'Row does not exist');";
+
+                        Query insertDifferenceQuery = new Query(insertDifferenceSql, server);
+                        insertDifferenceQuery.AddParameter("@TableName", table);
+                        insertDifferenceQuery.AddParameter("@AssetId", key);
+                        insertDifferenceQuery.Execute();
+                    }
+                }
+            }
+
+            
+            string csvFilePath = "C:\\git\\vs\\GraphQL-V2\\GraphQL-V2\\reconciliation_differences.csv";
+            File.WriteAllLines(csvFilePath, differences);
+            Console.WriteLine($"Reconciliation completed. Differences saved to {csvFilePath}");
+        }
+
+    }
+}
+
+
+--- FILE: GraphQL-V2\GraphQL-V2\Properties\AssemblyInfo.cs ---
+[assembly: AssemblyTitle("GraphQL-V2")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("GraphQL-V2")]
+[assembly: AssemblyCopyright("Copyright ©  2025")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+
+
+
+[assembly: ComVisible(false)]
+
+
+[assembly: Guid("228f6281-3eba-484e-8105-42dd2467dfef")]
+
+
+
+
+
+
+
+
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
+
+--- FILE: GraphQL-V2\GraphQL-V2\RunMaxSPAll.cs ---
+using Formatting = Newtonsoft.Json.Formatting;
+namespace GraphQL
+{
+    public class RunMaxSPAll
+    {
+        private readonly GraphQLHttpClient _client;
+
+        
+        public RunMaxSPAll(GraphQLHttpClient client)
+        {
+            _client = client ?? throw new ArgumentNullException(nameof(client));
+        }
+        
+        public class Valuation
+        {
+            public string Id { get; set; }
+            public DateTime ModifiedAt { get; set; }
+            public DateTime? DeletedAt { get; set; }
+            public int? PropertyBeds { get; set; }
+            public string PropertyBaths { get; set; }
+            public string PropertySquareFeet { get; set; }
+            public string GrossLivingArea { get; set; }
+        }
+
+        public class Underwriting
+        {
+            public double CreditScore { get; set; }
+            public double SecuredDebt { get; set; }
+            public double InvestmentAmount { get; set; }
+            public double InputHomeValue { get; set; }
+            public double ThfLimit { get; set; }
+            public double ExchangeRate { get; set; }
+            public double InvestmentPercentage { get; set; }
+            public bool IsVantage { get; set; }
+        }
+
+        public class Debt
+        {
+            public DateTime CreatedAt { get; set; }
+            public double InterestRate { get; set; }
+            public double UnpaidBalanceAmount { get; set; }
+            public int LienPosition { get; set; }
+            public DateTime AccountOpenedOn { get; set; }
+            public string Name { get; set; }
+            public double MonthlyPaymentAmount { get; set; }
+            public string MortgageProductType { get; set; }
+        }
+
+        public class Asset
+        {
+            public string Id { get; set; }
+            public string PricingVersion { get; set; }
+            public string Street { get; set; }
+            public string UnitNumber { get; set; }
+            public string City { get; set; }
+            public string State { get; set; }
+            public string ZipCode { get; set; }
+            public string County { get; set; }
+            public string FipsCode { get; set; }
+            public string ParcelNumber { get; set; }
+            public string PropertyType { get; set; }
+            public string PropertyUsage { get; set; }
+            public string DtiEscrowStatus { get; set; }
+            public string FloodZoneHazardIndicator { get; set; }
+            public string PropertyCondition { get; set; }
+            public double InvestmentAmount { get; set; }
+            public double InputHomeValue { get; set; }
+            public double ExchangeRate { get; set; }
+            public double AnnualizedCostLimit { get; set; }
+            public double ThfLimit { get; set; }
+            public int TermInYears { get; set; }
+            public double OriginationCharge { get; set; }
+            public string LegalDescription { get; set; }
+            public string UseOfProceedsName { get; set; }
+            public int LienPosition { get; set; }
+            public string ReferralEmail { get; set; }
+            public double FindersFee { get; set; }
+            public int CreditScore { get; set; }
+            public string FolderNameUps { get; set; }
+            public int LockoutMonths { get; set; }
+            public DateTime EffectiveOn { get; set; }
+            public int ApplicantID { get; set; }
+            public int CoApplicantID { get; set; }
+        }
+        public class InputData
+        {
+            public List<Valuation> Valuations { get; set; }
+        }
+
+        
+
+        static long ExtractNumbersFromPhone(string phone)
+        {
+            if (string.IsNullOrEmpty(phone))
+            {
+                return 0;
+            }
+
+            string numericString = "";
+
+            
+            foreach (char c in phone)
+            {
+                
+                if (char.IsDigit(c))
+                {
+                    numericString += c;
+                }
+            }
+
+            if (string.IsNullOrEmpty(numericString))
+            {
+                return 0;
+            }
+            Console.WriteLine(numericString);
+            
+            return long.Parse(numericString);
+        }
+
+        
+        public static (int Beds, decimal Baths, int SqFt)? GetBedsBathsSqFtFromJson(string valuationsJson)
+        {
+            
+            var valuations = JsonConvert.DeserializeObject<List<dynamic>>(valuationsJson);
+
+            if (valuations == null || !valuations.Any())
+                return null;
+
+            
+            foreach (var valuation in valuations)
+            {
+                if (valuation.propertyBeds != null && valuation.propertyBaths != null && valuation.propertySquareFeet != null)
+                {
+                    int beds = (int)valuation.propertyBeds;
+                    decimal baths = decimal.Parse((string)valuation.propertyBaths);
+                    decimal squareFeet = decimal.Parse((string)valuation.propertySquareFeet);
+                    int sqft = (int)Math.Round(squareFeet);
+                    return (beds, baths, sqft);
+                }
+            }
+
+            return null; 
+        }
+
+        
+        public int GetTitleHeldInTypeId(string titleHeldInType)
+        {
+            Query getTitleTypeId = new Query("SELECT title_held_in_type_id FROM TitleHeldInTypeLookup WHERE lookup = '" + titleHeldInType + "'", "UAM_REPORTING");
+            DataTable res = getTitleTypeId.ExecuteTable();
+            DataRow newestRecord = res.Rows[0];
+
+            return newestRecord.Field<int>("title_held_in_type_id");
+        }
+
+        public static int GetMaritalStatusIdFromDatabase(string maritalStatus)
+        {
+            if (string.IsNullOrEmpty(maritalStatus))
+            {
+                return 0; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT id FROM MaritalStatus WHERE status COLLATE SQL_Latin1_General_CP1_CI_AS = @Status";
+            Query q = new Query(query, server);
+            q.AddParameter("@Status", maritalStatus);
+
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["id"]);
+            }
+
+            return 0; 
+        }
+
+        public static int GetApplicantId(
+            string firstName,
+            string lastName,
+            string email,
+            DateTime? dob)
+        {
+            string server = "UAM_REPORTING";
+            string query = @"
+            SELECT id 
+            FROM Applicants 
+            WHERE 
+                FIRST_NAME = @FirstName AND 
+                LAST_NAME = @LastName AND 
+                EMAIL = @Email AND 
+                DOB = @DOB";
+
+            Query q = new Query(query, server);
+
+            q.AddParameter("@FirstName", firstName ?? (object)DBNull.Value);
+            q.AddParameter("@LastName", lastName ?? (object)DBNull.Value);
+            q.AddParameter("@Email", email ?? (object)DBNull.Value);
+            q.AddParameter("@DOB", dob ?? (object)DBNull.Value);
+
+            DataTable result = q.ExecuteTable();
+
+            if (result.Rows.Count > 0)
+            {
+                for (int i = 0; i < result.Rows.Count; i++)
+                {
+                    Console.WriteLine(result.Rows[i]["id"]);
+
+                }
+                return Convert.ToInt32(result.Rows[0]["id"]);
+            }
+
+            return 0; 
+        }
+
+        public static int GetLenderId(string lenderName)
+        {
+            if (string.IsNullOrEmpty(lenderName))
+            {
+                return 0; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT lender_id FROM LenderMap WHERE name COLLATE SQL_Latin1_General_CP1_CI_AS = @LenderName";
+            Query q = new Query(query, server);
+            q.AddParameter("@LenderName", lenderName);
+
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["lender_id"]);
+            }
+
+            return 0; 
+        }
+
+        public static int GetDebtTypeId(string debtType)
+        {
+            if (string.IsNullOrEmpty(debtType))
+            {
+                return 0; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT debttype_id FROM DebtTypeLookup WHERE lookup COLLATE SQL_Latin1_General_CP1_CI_AS = @DebtType";
+            Query q = new Query(query, server);
+            q.AddParameter("@DebtType", debtType);
+
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["debttype_id"]);
+            }
+
+            return 0; 
+        }
+
+        public static int GetOccupancyTypeId(string occupancyType)
+        {
+            if (string.IsNullOrEmpty(occupancyType))
+            {
+                return 1; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT occupancytype_id FROM OccupancyTypeMap WHERE lookup COLLATE SQL_Latin1_General_CP1_CI_AS = @OccupancyType";
+            Query q = new Query(query, server);
+            q.AddParameter("@OccupancyType", occupancyType);
+
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["occupancytype_id"]);
+            }
+
+            return 1; 
+        }
+
+        public static int GetPropertyTypeId(string propertyType)
+        {
+            if (string.IsNullOrEmpty(propertyType))
+            {
+                return 0; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT propertytype_id FROM PropertyTypeMap WHERE lookup COLLATE SQL_Latin1_General_CP1_CI_AS = @PropertyType";
+            Query q = new Query(query, server);
+            q.AddParameter("@PropertyType", propertyType);
+
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["propertytype_id"]);
+            }
+
+            return 0; 
+        }
+
+        public static int GetProceedsUseId(string proceedsUse)
+        {
+            if (string.IsNullOrEmpty(proceedsUse))
+            {
+                return 0; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT proceedsuse_id FROM ProceedsUseMap WHERE lookup COLLATE SQL_Latin1_General_CP1_CI_AS = @ProceedsUse";
+            Query q = new Query(query, server);
+            q.AddParameter("@ProceedsUse", proceedsUse);
+
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["proceedsuse_id"]);
+            }
+
+            return 0; 
+        }
+
+        public static int GetPropertyConditionId(string propertyCondition)
+        {
+            if (string.IsNullOrEmpty(propertyCondition))
+            {
+                return 0; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT id FROM PropertyConditions WHERE condition COLLATE SQL_Latin1_General_CP1_CI_AS = @PropertyCondition";
+            Query q = new Query(query, server);
+            q.AddParameter("@PropertyCondition", propertyCondition.ToUpper());
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["id"]);
+            }
+
+            return 0; 
+        }
+
+
+
+        public static void InsertAssetData(string assetId, Asset asset, string userName)
+        {
+            string server = "UAM_REPORTING";
+            string address_1_2 = asset.Street + ", " + (asset.UnitNumber ?? "");
+            if (asset.UnitNumber == null || asset.UnitNumber.Replace(" ", "").Equals(""))
+            {
+                address_1_2 = asset.Street;
+            }
+
+
+            string insertAssetSql = @"
+        INSERT INTO Assets_graphql (
+            ID,
+            EFFECTIVE_DATE,
+            expiration_date_delete,
+            LIEN_POSITION,
+            ORIGINATION_FEE,
+            factor,
+            PricingVersion,
+            flood_zone,
+            ADDRESS_1,
+            ADDRESS_2,
+            CITY,
+            STATE,
+            ZIP,
+            ZIP_FULL,
+            COUNTY,
+            FIPS,
+            APN,
+            INVESTMENT_PAYMENT,
+            STARTING_HOME_VALUE,
+            FOLDER_NAME_UPS,
+            EXCHANGE_RATE,
+            COST_LIMIT,
+            TOTAL_HOME_FINANCE_LIMIT,
+            TERM,
+            COST_LIMIT_BASIS,
+            FINDERS_FEE,
+            LOCKOUT_MONTHS,
+            OCCUPANCYTYPE_ID,
+            PROPERTYTYPE_ID,
+            PROCEEDSUSE_ID,
+            PRODUCT_ID,
+            MAX_ID,
+            PROPERTYCONDITION_ID,
+            DOC_MAINTENANCE_ADDENDUM,
+            DOC_CONSENT_OF_SPOUSE,
+            update_time,
+            update_by,
+            LEGAL_DESC,
+            MAX_IMPORTED_LIEN_POSITION,
+            DTI_ESCROW_STATUS,
+            address_full,
+            address_simple,
+            address_1_2,
+            credit_score_calc_current_cache,
+            cr_score_cache,
+            cr_score_date_cache,
+            added_to_badger,
+            applicant_id,
+            applicant_co_id
+        )
+        VALUES (
+            @AssetId,
+            @EffectiveDate,
+            @ExpirationDateDelete,
+            @LienPosition,
+            @OriginationFee,
+            @Factor,
+            @PricingVersion,
+            @FloodZone,
+            @Address1,
+            @Address2,
+            @City,
+            @State,
+            @Zip,
+            @ZipFull,
+            @County,
+            @Fips,
+            @Apn,
+            @InvestmentPayment,
+            @StartingHomeValue,
+            @FolderNameUps,
+            @ExchangeRate,
+            @CostLimit,
+            @TotalHomeFinanceLimit,
+            @Term,
+            @CostLimitBasis,
+            @FindersFee,
+            @LockoutMonths,
+            @OccupancyTypeId,
+            @PropertyTypeId,
+            @ProceedsUseId,
+            @ProductId,
+            @MaxId,
+            @PropertyConditionId,
+            @DocMaintenanceAddendum,
+            @DocConsentOfSpouse,
+            @UpdateTime,
+            @UpdateBy,
+            @LegalDesc,
+            @MaxImportedLienPosition,
+            @DtiEscrowStatus,
+            @addressFull,
+            @addressSimple,
+            @address1_2,
+            @creditScoreCalcCurrentCache,
+            @crScoreCache,
+            @crScoreDateCache,
+            @addedToBadger,
+            @applicantID,
+            @applicantCoID
+    );";
+
+            Query q = new Query(insertAssetSql, server);
+
+            q.AddParameter("@AssetId", assetId);
+            q.AddParameter("@EffectiveDate", asset.EffectiveOn); 
+            q.AddParameter("@ExpirationDateDelete", asset.EffectiveOn.AddYears(10)); 
+            q.AddParameter("@LienPosition", asset.LienPosition);
+            q.AddParameter("@OriginationFee", asset.OriginationCharge);
+            q.AddParameter("@Factor", 1); 
+            q.AddParameter("@PricingVersion", asset.PricingVersion ?? (object)DBNull.Value);
+            q.AddParameter("@FloodZone", asset.FloodZoneHazardIndicator ?? (object)DBNull.Value);
+            q.AddParameter("@Address1", asset.Street ?? (object)DBNull.Value);
+            q.AddParameter("@Address2", asset.UnitNumber ?? (object)DBNull.Value);
+            q.AddParameter("@City", asset.City ?? (object)DBNull.Value);
+            q.AddParameter("@State", asset.State ?? (object)DBNull.Value);
+            q.AddParameter("@Zip", asset.ZipCode ?? (object)DBNull.Value);
+            q.AddParameter("@ZipFull", asset.ZipCode ?? (object)DBNull.Value);
+            q.AddParameter("@County", asset.County ?? (object)DBNull.Value);
+            q.AddParameter("@Fips", asset.FipsCode ?? (object)DBNull.Value);
+            q.AddParameter("@Apn", asset.ParcelNumber ?? (object)DBNull.Value);
+            q.AddParameter("@InvestmentPayment", asset.InvestmentAmount);
+            q.AddParameter("@StartingHomeValue", asset.InputHomeValue);
+            q.AddParameter("@FolderNameUps", asset.FolderNameUps ?? (object)DBNull.Value);
+            q.AddParameter("@ExchangeRate", asset.ExchangeRate);
+            q.AddParameter("@CostLimit", asset.AnnualizedCostLimit);
+            q.AddParameter("@TotalHomeFinanceLimit", asset.ThfLimit);
+            q.AddParameter("@Term", asset.TermInYears * 12);
+            q.AddParameter("@CostLimitBasis", asset.InvestmentAmount);
+            q.AddParameter("@FindersFee", asset.FindersFee);
+            q.AddParameter("@LockoutMonths", asset.LockoutMonths == 0 ? (object)DBNull.Value : asset.LockoutMonths);
+            q.AddParameter("@OccupancyTypeId", GetOccupancyTypeId(asset.PropertyUsage));
+            q.AddParameter("@PropertyTypeId", GetPropertyTypeId(asset.PropertyType));
+            q.AddParameter("@ProceedsUseId", GetProceedsUseId(asset.UseOfProceedsName));
+            q.AddParameter("@ProductId", 3); 
+            q.AddParameter("@MaxId", assetId);
+            q.AddParameter("@PropertyConditionId", GetPropertyConditionId(asset.PropertyCondition));
+            q.AddParameter("@DocMaintenanceAddendum", 0); 
+            q.AddParameter("@DocConsentOfSpouse", 0); 
+            q.AddParameter("@UpdateTime", DateTime.UtcNow);
+            q.AddParameter("@UpdateBy", userName);
+            q.AddParameter("@LegalDesc", asset.LegalDescription ?? (object)DBNull.Value);
+            q.AddParameter("@MaxImportedLienPosition", asset.LienPosition);
+            q.AddParameter("@DtiEscrowStatus", asset.DtiEscrowStatus ?? (object)DBNull.Value);
+            q.AddParameter("@addressFull", asset.Street + ", " + asset.City + ", " + asset.State + " " + asset.ZipCode);
+            q.AddParameter("@addressSimple", asset.Street);
+            q.AddParameter("@address1_2", address_1_2);
+            q.AddParameter("@creditScoreCalcCurrentCache", asset.CreditScore);
+            q.AddParameter("@crScoreCache", asset.CreditScore);
+            q.AddParameter("@crScoreDateCache", DateTime.UtcNow);
+            q.AddParameter("@addedToBadger", DateTime.UtcNow);
+            q.AddParameter("@applicantID", asset.ApplicantID);
+            q.AddParameter("@applicantCoID", asset.CoApplicantID == 0 ? (object)DBNull.Value : asset.CoApplicantID);
+            
+            
+            q.ApplyCommonVariables();
+            q.Execute();
+        }
+
+
+
+        public static void InsertPropertyInfo(
+            string assetId,
+            int titleHeldInTypeId,
+            DateTime? purchaseDate,
+            decimal? purchaseAmount,
+            string titleVesting,
+            int? sqft,
+            int? beds,
+            decimal? baths,
+            string userName)
+        {
+            string server = "UAM_REPORTING";
+            string insertPropertySql = @"
+            INSERT INTO PropertyInfo_graphql (
+                asset_id,
+                title_held_in_type_id,
+                purchase_date,
+                purchase_amount,
+                title_vesting,
+                sqft,
+                beds,
+                baths,
+                update_time,
+                update_by
+            )
+            VALUES (
+                @AssetId,
+                @TitleHeldInTypeId,
+                @PurchaseDate,
+                @PurchaseAmount,
+                @TitleVesting,
+                @SqFt,
+                @Beds,
+                @Baths,
+                @UpdateTime,
+                @UpdateBy
+            );";
+            Query q = new Query(insertPropertySql, server);
+
+            Console.WriteLine("Asset ID: " + assetId);
+            Console.WriteLine("Table: PropertyInfo");
+
+            q.AddParameter("@AssetId", assetId);
+            q.AddParameter("@TitleHeldInTypeId", titleHeldInTypeId);
+            q.AddParameter("@PurchaseDate", purchaseDate ?? (object)DBNull.Value);
+            q.AddParameter("@PurchaseAmount", purchaseAmount ?? (object)DBNull.Value);
+            q.AddParameter("@TitleVesting", titleVesting ?? (object)DBNull.Value);
+            q.AddParameter("@SqFt", sqft ?? (object)DBNull.Value);
+            q.AddParameter("@Beds", beds ?? (object)DBNull.Value);
+            q.AddParameter("@Baths", baths ?? (object)DBNull.Value);
+            q.AddParameter("@UpdateTime", DateTime.UtcNow);
+            q.AddParameter("@UpdateBy", userName);
+
+            q.ApplyCommonVariables();
+            q.Execute();
+        }
+
+        public static int InsertApplicantInfo(
+            string firstName,
+            string lastName,
+            string middleName,
+            string email,
+            long phone,
+            DateTime? dob,
+            int maritalStatusId,
+            string userName)
+        {
+
+            int precheckAppId = GetApplicantId(firstName, lastName, email, dob);
+            if (precheckAppId != 0)
+            {
+                return precheckAppId;
+            }
+
+            string server = "UAM_REPORTING";
+            string insertApplicantSql = @"
+            INSERT INTO Applicants_GraphQL (
+                FIRST_NAME,
+                LAST_NAME,
+                MIDDLE_NAME,
+                FULL_NAME,
+                EMAIL,
+                PHONE,
+                DOB,
+                MARITALSTATUS_ID,
+                update_time,
+                update_by
+            )
+            VALUES (
+                @FirstName,
+                @LastName,
+                @MiddleName,
+                @FirstName + ' ' + @MiddleName + ' ' + @LastName,   
+                @Email,
+                @Phone,
+                @DOB,
+                @MaritalStatusId,
+                @UpdateTime,
+                @UpdateBy
+            );";
+
+            Query q = new Query(insertApplicantSql, server);
+
+            q.AddParameter("@FirstName", firstName ?? (object)DBNull.Value);
+            q.AddParameter("@LastName", lastName ?? (object)DBNull.Value);
+            q.AddParameter("@MiddleName", middleName ?? (object)DBNull.Value);
+            q.AddParameter("@Email", email ?? (object)DBNull.Value);
+            q.AddParameter("@Phone", phone);
+            q.AddParameter("@DOB", dob ?? (object)DBNull.Value);
+            q.AddParameter("@MaritalStatusId", maritalStatusId);
+            q.AddParameter("@UpdateTime", DateTime.UtcNow);
+            q.AddParameter("@UpdateBy", userName);
+
+            q.ApplyCommonVariables();
+            q.Execute();
+            int appId = GetApplicantId(firstName, lastName, email, dob);
+            return appId;
+        }
+
+        public static void InsertAssetApplicantMap(
+            string assetId,
+            int applicantTypeId,
+            int applicantId,
+            string userName)
+        {
+            string server = "UAM_REPORTING";
+            string insertAssetApplicantMapSql = @"
+            INSERT INTO AssetApplicantMap_graphql (
+                ASSET_ID,
+                APPLICANTTYPE_ID,
+                APPLICANT_ID,
+                update_time,
+                update_by
+            )
+            VALUES (
+                @AssetId,
+                @ApplicantTypeId,
+                @ApplicantId,
+                @UpdateTime,
+                @UpdateBy
+            );";
+
+            Query q = new Query(insertAssetApplicantMapSql, server);
+
+            q.AddParameter("@AssetId", assetId ?? (object)DBNull.Value);
+            q.AddParameter("@ApplicantTypeId", applicantTypeId);
+            q.AddParameter("@ApplicantId", applicantId);
+            q.AddParameter("@UpdateTime", DateTime.UtcNow);
+            q.AddParameter("@UpdateBy", userName);
+
+            q.ApplyCommonVariables();
+            q.Execute();
+        }
+
+        public static void InsertUnderwritingData(string assetId, Underwriting underwriting, string userName)
+        {
+            string server = "UAM_REPORTING";
+
+            int creditScoreModelId = underwriting.IsVantage ? 8 : 1;
+
+            string insertUnderwritingSql = @"
+                INSERT INTO Underwriting_graphql (
+                    asset_id,
+                    credit_score,
+                    CreditScoreModel_id,
+                    secured_debt,
+                    max_proceeds,
+                    update_time,
+                    update_by
+                )
+                VALUES (
+                    @AssetId,
+                    @CreditScore,
+                    @CreditScoreModelId,
+                    @SecuredDebt,
+                    @MaxProceeds,
+                    @UpdateTime,
+                    @UpdateBy
+                );";
+
+            Query q = new Query(insertUnderwritingSql, server);
+
+            q.AddParameter("@AssetId", assetId);
+            q.AddParameter("@CreditScore", underwriting.CreditScore);
+            q.AddParameter("@CreditScoreModelId", creditScoreModelId);
+            q.AddParameter("@SecuredDebt", underwriting.SecuredDebt);
+            q.AddParameter("@MaxProceeds", underwriting.InvestmentAmount);
+            q.AddParameter("@UpdateTime", DateTime.UtcNow);
+            q.AddParameter("@UpdateBy", userName);
+
+            q.ApplyCommonVariables();
+            q.Execute();
+        }
+
+
+        public static async Task InsertDebtDataAsync(string assetId, List<Debt> debtList, string userName)
+        {
+            string server = "UAM_REPORTING";
+            foreach (var debt in debtList)
+            {
+                string insertDebtSql = @"
+                    INSERT INTO Debt_graphql (
+                        ASSET_ID,
+                        ASOF,
+                        lender_id,
+                        DEBTTYPE_ID,
+                        RATE,
+                        BALANCE,
+                        LIEN_POSITION,
+                        LIEN_POSITION_AT_ORIGINATION,
+                        PAYMENT,
+                        ACCOUNT_OPEN_DATE,
+                        initial,
+                        update_time,
+                        update_by
+                    )
+                    VALUES (
+                        @AssetId,
+                        @Asof,
+                        @LenderId,
+                        @DebtTypeId,
+                        @Rate,
+                        @Balance,
+                        @LienPosition,
+                        @LienPositionAtOrigination,
+                        @Payment,
+                        @AccountOpenDate,
+                        @Initial,
+                        @UpdateTime,
+                        @UpdateBy
+                    );";
+
+                Query q = new Query(insertDebtSql, server);
+
+                q.AddParameter("@AssetId", assetId);
+                q.AddParameter("@Asof", debt.CreatedAt);
+                q.AddParameter("@LenderId", GetLenderId(debt.Name)); 
+                q.AddParameter("@DebtTypeId", GetDebtTypeId(debt.MortgageProductType)); 
+                q.AddParameter("@Rate", debt.InterestRate);
+                q.AddParameter("@Balance", debt.UnpaidBalanceAmount);
+                q.AddParameter("@LienPosition", debt.LienPosition);
+                q.AddParameter("@LienPositionAtOrigination", debt.LienPosition);
+                q.AddParameter("@Payment", debt.MonthlyPaymentAmount);
+                q.AddParameter("@AccountOpenDate", debt.AccountOpenedOn);
+                q.AddParameter("@Initial", true);
+                q.AddParameter("@UpdateTime", DateTime.UtcNow);
+                q.AddParameter("@UpdateBy", userName);
+
+                q.ApplyCommonVariables();
+                q.Execute();
+            }
+        }
+
+        
+        public async Task<string> ImportAssetAsync(string assetId, List<int> applicants, string userName = "test")
+        {
+            var fetchAssetDataQuery = new GraphQLRequest
+            {
+                Query = @"
+        query GetAssetData($pk: String!) {
+            application(externalId: $pk) {
+                id
+                name
+                agreementEffectiveOn
+                icsEffectiveDate
+                pricingVersion
+                applicationFico
+                isLockedOffer
+                expireAt 
+                property {
+                    address {
+                        street
+                        unitNumber
+                        city
+                        state
+                        zipCode
+                        county
+                        fipsCode
+                        parcelNumber
+                    }
+                    propertyType
+                    propertyUsage
+                    dtiEscrowStatus
+                }
+                valuations {
+                    floodZoneHazardIndicator
+                    propertyCondition
+                    modifiedAt
+                    adverseSiteConditions
+                    conditionOfAppraisalType
+                }
+                offers {
+                    investmentAmount
+                    inputHomeValue
+                    exchangeRate
+                    annualizedCostLimit
+                    thfLimit
+                    termInYears
+                }
+                expenses {
+                    amount
+                    type
+                }
+                titleReport {
+                    legalDescription
+                }
+                useOfProceeds
+                tradelinesCalculations {
+                    lienPosition
+                }
+                applicationProfiles {
+                    id
+                }
+            }
+        }",
+                Variables = new { pk = assetId }
+            };
+
+            var fetchAssetDataResponse = await _client.SendQueryAsync<dynamic>(fetchAssetDataQuery);
+            string jsonResponse = JsonConvert.SerializeObject(fetchAssetDataResponse.Data, Formatting.Indented);
+
+            var application = fetchAssetDataResponse.Data.application;
+            var property = application.property;
+            var address = property.address;
+            var valuation = ((IEnumerable<dynamic>)application.valuations).FirstOrDefault();
+            var offer = ((IEnumerable<dynamic>)application.offers).FirstOrDefault();
+            var expense = ((IEnumerable<dynamic>)application.expenses).FirstOrDefault(e => (string)e.type == "origination_charge");
+            var titleReport = application.titleReport;
+            var useOfProceeds = application.useOfProceeds;
+            var lienPosStr = application.tradelinesCalculations.lienPosition as JValue;
+            string lienPosString = lienPosStr?.ToString();
+            int lienPos = int.TryParse(lienPosString?.FirstOrDefault().ToString(), out int result) ? result : 0;
+            var referral = application.referral;
+            var creditScore = int.TryParse(application.applicationFico?.ToString().Split('.')[0], out result) ? result : 0;
+
+            
+            double? thfLimit = offer?.thfLimit != null ? (double?)offer.thfLimit : null;
+            double investmentAmount = offer?.investmentAmount ?? 0.0;
+            double inputHomeValue = offer?.inputHomeValue ?? 0.0;
+            double exchangeRate = offer?.exchangeRate ?? 0.0;
+            double annualizedCostLimit = offer?.annualizedCostLimit ?? 0.0;
+            int termInYears = offer?.termInYears ?? 0;
+
+            string agreementEffectiveOnStr = application.agreementEffectiveOn?.ToString();
+            DateTime effectiveOn = DateTime.Parse(agreementEffectiveOnStr);
+
+            
+            string folderNameUps = application.name;
+            int lastCommaIndex = folderNameUps.LastIndexOf(',');
+            if (lastCommaIndex != -1)
+            {
+                folderNameUps = folderNameUps.Substring(0, lastCommaIndex).Trim();
+            }
+
+            
+            var mostRecentValuation = ((IEnumerable<dynamic>)application.valuations)
+                .Where(v => v.propertyCondition != null)
+                .OrderByDescending(v => (DateTime)v.modifiedAt)
+                .FirstOrDefault();
+            string propertyCondition = mostRecentValuation?.propertyCondition;
+
+            bool isLockedOffer = (bool)application.isLockedOffer;
+            int lockoutMonths = isLockedOffer ? 6 : 0;
+
+            int primaryApplicant = applicants[0];
+            int coApplicant = 0;
+            if (applicants.Count > 1)
+            {
+                coApplicant = applicants[1];
+            }
+
+            var asset = new Asset
+            {
+                Id = application.id,
+                PricingVersion = application.pricingVersion,
+                Street = address.street,
+                UnitNumber = address.unitNumber,
+                City = address.city,
+                State = address.state,
+                ZipCode = address.zipCode,
+                County = address.county,
+                FipsCode = address.fipsCode,
+                ParcelNumber = address.parcelNumber,
+                PropertyType = property.propertyType,
+                PropertyUsage = property.propertyUsage,
+                DtiEscrowStatus = property.dtiEscrowStatus,
+                FloodZoneHazardIndicator = valuation?.floodZoneHazardIndicator,
+                PropertyCondition = propertyCondition,
+                InvestmentAmount = investmentAmount,
+                InputHomeValue = inputHomeValue,
+                ExchangeRate = exchangeRate,
+                AnnualizedCostLimit = annualizedCostLimit,
+                ThfLimit = thfLimit ?? 0.0, 
+                TermInYears = termInYears,
+                OriginationCharge = expense?.amount ?? 0.0,
+                LegalDescription = titleReport?.legalDescription,
+                UseOfProceedsName = useOfProceeds,
+                LienPosition = lienPos,
+                ReferralEmail = referral?.email,
+                CreditScore = creditScore,
+                LockoutMonths = lockoutMonths,
+                EffectiveOn = effectiveOn,
+                FolderNameUps = folderNameUps,
+                ApplicantID = primaryApplicant,
+                CoApplicantID = coApplicant
+            };
+
+            InsertAssetData(assetId, asset, userName);
+
+            return $"Asset information for asset {assetId} imported successfully.";
+        }
+
+        public async Task<string> ImportPropertyInfoAsync(string assetId, string userName = "test")
+        {
+            
+            
+            var fetchDataQuery = new GraphQLRequest
+            {
+                Query = @"
+            query GetPropertyInfo($pk: String!) {
+                application(externalId: $pk) {
+                    id
+                    property {
+                        id
+                        titleHeld
+                        aquiredOn
+                        aquiredPrice
+                        titleVesting
+                    }
+                    valuations {
+                        id
+                        modifiedAt
+                        deletedAt
+                        propertyBeds
+          	            propertyBaths
+          	            propertySquareFeet
+                        grossLivingArea
+                    }
+                }
+            }",
+                Variables = new { pk = assetId }
+            };
+
+            
+            var fetchDataResponse = await _client.SendQueryAsync<dynamic>(fetchDataQuery);
+            string jsonResponse = JsonConvert.SerializeObject(fetchDataResponse.Data, Formatting.Indented);
+
+            
+            if (fetchDataResponse.Data == null)
+            {
+                Console.WriteLine($"No data returned for asset {assetId}.");
+                return $"No data returned for asset {assetId}.";
+            }
+
+            
+            var applicationData = fetchDataResponse.Data.application;
+            if (applicationData == null)
+            {
+                Console.WriteLine($"No data found for asset {assetId}.");
+                return $"No data found for asset {assetId}.";
+            }
+
+            
+            var property = applicationData.property;
+            var valuations = applicationData.valuations;
+            int typeId = GetTitleHeldInTypeId((string)applicationData.property.titleHeld);
+            if (valuations == null || ((IEnumerable<dynamic>)valuations).Any(v => v.deletedAt != null))
+            {
+                Console.WriteLine($"No valid valuations found for asset {assetId}.");
+                return $"No valid valuations found for asset {assetId}.";
+            }
+
+            
+            string valuationsJson = JsonConvert.SerializeObject(valuations, Formatting.Indented);
+            var valuations_info = GetBedsBathsSqFtFromJson(valuationsJson);
+
+            
+            DateTime? acquiredOn = property.aquiredOn;
+            decimal? aquiredPrice = property.aquiredPrice;
+            string titleVesting = property.titleVesting;
+            int? sqft = valuations_info?.SqFt;
+            int? beds = valuations_info?.Beds;
+            decimal? baths = valuations_info?.Baths;
+
+
+            InsertPropertyInfo(assetId, typeId, acquiredOn, aquiredPrice, titleVesting, sqft, beds, baths, userName);
+
+
+            return $"Property {assetId} added successfully.";
+        }
+
+        public async Task<List<int>> ImportApplicantTableAsync(string assetId, string userName = "test")
+
+        {
+            var fetchDataQuery = new GraphQLRequest
+            {
+                Query = @"
+                    query GetApplicantsByApplicationId($pk: String!) {
+                        application(externalId: $pk) {
+                            externalId
+    		                    applicationProfiles {
+                                id
+                                position
+                                profile {
+                                    firstName
+                                    lastName
+                                    middleName
+                                    email
+                                    phone
+                                    bornOn
+                                    maritalStatus
+                                    username
+                                    id
+        	                   }
+
+                            }
+                        }
+                    }",
+                Variables = new { pk = assetId }
+            };
+
+            
+            var fetchDataResponse = await _client.SendQueryAsync<dynamic>(fetchDataQuery);
+            string jsonResponse = JsonConvert.SerializeObject(fetchDataResponse.Data, Formatting.Indented);
+
+
+            
+            if (fetchDataResponse.Data == null)
+            {
+                Console.WriteLine($"No data returned for asset {assetId}.");
+                return null;
+            }
+
+            var applicationData = fetchDataResponse.Data.application;
+            if (applicationData == null)
+            {
+                Console.WriteLine($"No application data found for asset {assetId}.");
+                return null;
+            }
+
+            var applicationProfiles = applicationData.applicationProfiles;
+            if (applicationProfiles == null)
+            {
+                Console.WriteLine($"No application profiles found for asset {assetId}.");
+
+                return null;
+            }
+
+            
+            var sortedProfiles = ((IEnumerable<dynamic>)applicationProfiles).OrderBy(p => (int)p.position).ToList();
+
+            List<int> applicants = new List<int>();
+            foreach (var profileData in sortedProfiles)
+            {
+                var profile = profileData.profile;
+                if (profile == null)
+                {
+                    continue;
+                }
+
+                string firstName = profile.firstName;
+                string lastName = profile.lastName;
+                string middleName = profile.middleName;
+                string email = profile.email;
+                long phone = ExtractNumbersFromPhone(profile.phone?.ToString());
+                DateTime? dob = profile.bornOn;
+                string maritalStatus = profile.maritalStatus;
+                int applicantTypeId = profileData.position;
+
+                int maritalStatusId = GetMaritalStatusIdFromDatabase(maritalStatus);
+
+                
+                int applicantid = InsertApplicantInfo(firstName, lastName, middleName, email, phone, dob, maritalStatusId, userName);
+
+                applicants.Add(applicantid);
+                
+                InsertAssetApplicantMap(assetId, applicantTypeId, applicantid, userName);
+            }
+
+
+            return applicants;
+        }
+
+        public async Task<string> ImportDebtTableAsync(string assetId, string userName = "test")
+        {
+            var fetchDebtDataQuery = new GraphQLRequest
+            {
+                Query = @"
+                    query GetDebtData($pk: String!) {
+                        application(externalId: $pk) {
+                            ieInvestmentPayment
+                            ieClosingCostsPaidBeforeClosing
+                            tradelines {
+                                createdAt
+                                interestRate
+                                unpaidBalanceAmount
+                                lienPosition
+                                accountOpenedOn
+                                name
+                                monthlyPaymentAmount
+                                mortgageProductType
+                                payoffAmount
+                                id
+                                creditReport {
+                                    id
+                                }
+                            }
+                        }
+                    }",
+                Variables = new { pk = assetId }
+            };
+
+            var fetchDebtDataResponse = await _client.SendQueryAsync<dynamic>(fetchDebtDataQuery);
+            string jsonResponse = JsonConvert.SerializeObject(fetchDebtDataResponse.Data, Formatting.Indented);
+
+            var tradelines = fetchDebtDataResponse.Data.application.tradelines;
+            var debtList = new List<Debt>();
+
+            foreach (var tradeline in tradelines)
+            {
+                var debt = new Debt
+                {
+                    CreatedAt = tradeline.createdAt != null ? (DateTime)tradeline.createdAt : DateTime.MinValue,
+                    InterestRate = tradeline.interestRate != null ? (double)tradeline.interestRate : 0.0,
+                    UnpaidBalanceAmount = tradeline.unpaidBalanceAmount != null ? (double)tradeline.unpaidBalanceAmount : 0.0,
+                    LienPosition = tradeline.lienPosition != null ? (int)tradeline.lienPosition : 0,
+                    AccountOpenedOn = tradeline.accountOpenedOn != null ? (DateTime)tradeline.accountOpenedOn : DateTime.MinValue,
+                    Name = tradeline.name != null ? (string)tradeline.name : string.Empty,
+                    MonthlyPaymentAmount = tradeline.monthlyPaymentAmount != null ? (double)tradeline.monthlyPaymentAmount : 0.0,
+                    MortgageProductType = tradeline.mortgageProductType != null ? (string)tradeline.mortgageProductType : string.Empty
+                };
+                if (debt.LienPosition != 0)
+                {
+                    debtList.Add(debt);
+                }
+            }
+
+            await InsertDebtDataAsync(assetId, debtList, userName);
+            return $"Debt information for asset {assetId} imported successfully.";
+        }
+
+        public async Task<string> ImportUnderwritingTable(string assetId, string userName = "test")
+        {
+            var fetchUnderwritingDataQuery = new GraphQLRequest
+            {
+                Query = @"
+                    query GetUnderwritingData($pk: String!) {
+                        application(externalId: $pk) {
+                            offers {
+                                inputFico
+                                inputDebt
+                                investmentAmount
+                                inputHomeValue
+                                thfLimit
+                                exchangeRate
+                                investmentPercentage
+                            }
+                            creditReports {
+                                isVantage
+                            }
+                        }
+                    }",
+                Variables = new { pk = assetId }
+            };
+
+            var fetchUnderwritingDataResponse = await _client.SendQueryAsync<dynamic>(fetchUnderwritingDataQuery);
+            string jsonResponse = JsonConvert.SerializeObject(fetchUnderwritingDataResponse.Data, Formatting.Indented);
+
+            var application = fetchUnderwritingDataResponse.Data.application;
+            var offer = application.offers[0];
+            var creditReport = application.creditReports[0];
+
+            var underwriting = new Underwriting
+            {
+                CreditScore = offer.inputFico != null ? (double)offer.inputFico : 0.0,
+                SecuredDebt = offer.inputDebt != null ? (double)offer.inputDebt : 0.0,
+                InvestmentAmount = offer.investmentAmount != null ? (double)offer.investmentAmount : 0.0,
+                InputHomeValue = offer.inputHomeValue != null ? (double)offer.inputHomeValue : 0.0,
+                ThfLimit = offer.thfLimit != null ? (double)offer.thfLimit : 0.0,
+                ExchangeRate = offer.exchangeRate != null ? (double)offer.exchangeRate : 0.0,
+                InvestmentPercentage = offer.investmentPercentage != null ? (double)offer.investmentPercentage : 0.0,
+                IsVantage = creditReport.isVantage != null ? (bool)creditReport.isVantage : false
+            };
+
+            InsertUnderwritingData(assetId, underwriting, userName);
+
+            return $"Underwriting information for asset {assetId} imported successfully.";
+        }
+
+        public async Task ProcessAssetsAsync(List<string> assetIds, string userName = "test")
+        {
+            foreach (string assetId in assetIds)
+            {
+                Console.WriteLine($"Processing asset with ID: '{assetId}'");
+                try
+                {
+                    
+                    List<int> applicantIds = await ImportApplicantTableAsync(assetId, userName);
+                    Console.WriteLine($"Number of applicants: {applicantIds.Count}");
+
+                    
+                    string result = await ImportAssetAsync(assetId, applicantIds, userName);
+                    Console.WriteLine("Successfully imported asset data for asset " + assetId);
+                    Console.WriteLine(result);
+
+                    
+                    result = await ImportPropertyInfoAsync(assetId, userName);
+                    Console.WriteLine("Successfully imported property data for asset " + assetId);
+                    Console.WriteLine(result);
+
+                    
+                    result = await ImportDebtTableAsync(assetId, userName);
+                    Console.WriteLine("Successfully imported debt data for asset " + assetId);
+                    Console.WriteLine(result);
+
+                    
+                    result = await ImportUnderwritingTable(assetId, userName);
+                    Console.WriteLine("Successfully imported underwriting data for asset " + assetId);
+                    Console.WriteLine(result);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error processing asset {assetId}: {ex.Message}");
+                    string logFilePath = "C:\\git\\vs\\GraphQL-V2\\GraphQL-V2\\asset_errors.txt"; 
+                    string errorMessage = $"[{DateTime.Now}] Error processing asset {assetId}: {ex.Message}{Environment.NewLine}";
+
+                    try
+                    {
+                        
+                        System.IO.File.AppendAllText(logFilePath, errorMessage);
+                    }
+                    catch (Exception logEx)
+                    {
+                        
+                        Console.WriteLine($"Failed to write to log file: {logEx.Message}");
+                    }
+                }
+            }
+        }
+
+    }
+}
+
+
+--- FILE: GraphQL\GraphQL\GraphQL\Program.cs ---
+using Formatting = Newtonsoft.Json.Formatting;
+namespace GraphQL
+{
+    
+    public class Valuation
+    {
+        public string Id { get; set; }
+        public DateTime ModifiedAt { get; set; }
+        public DateTime? DeletedAt { get; set; }
+        public int? PropertyBeds { get; set; }
+        public string PropertyBaths { get; set; }
+        public string PropertySquareFeet { get; set; }
+        public string GrossLivingArea { get; set; }
+    }
+
+    public class Underwriting
+    {
+        public double CreditScore { get; set; }
+        public double SecuredDebt { get; set; }
+        public double InvestmentAmount { get; set; }
+        public double InputHomeValue { get; set; }
+        public double ThfLimit { get; set; }
+        public double ExchangeRate { get; set; }
+        public double InvestmentPercentage { get; set; }
+        public bool IsVantage { get; set; }
+    }
+
+    public class Debt
+    {
+        public DateTime CreatedAt { get; set; }
+        public double InterestRate { get; set; }
+        public double UnpaidBalanceAmount { get; set; }
+        public int LienPosition { get; set; }
+        public DateTime AccountOpenedOn { get; set; }
+        public string Name { get; set; }
+        public double MonthlyPaymentAmount { get; set; }
+        public string MortgageProductType { get; set; }
+    }
+
+    public class Asset
+    {
+        public string Id { get; set; }
+        public string PricingVersion { get; set; }
+        public string Street { get; set; }
+        public string UnitNumber { get; set; }
+        public string City { get; set; }
+        public string State { get; set; }
+        public string ZipCode { get; set; }
+        public string County { get; set; }
+        public string FipsCode { get; set; }
+        public string ParcelNumber { get; set; }
+        public string PropertyType { get; set; }
+        public string PropertyUsage { get; set; }
+        public string DtiEscrowStatus { get; set; }
+        public string FloodZoneHazardIndicator { get; set; }
+        public string PropertyCondition { get; set; }
+        public double InvestmentAmount { get; set; }
+        public double InputHomeValue { get; set; }
+        public double ExchangeRate { get; set; }
+        public double AnnualizedCostLimit { get; set; }
+        public double ThfLimit { get; set; }
+        public int TermInYears { get; set; }
+        public double OriginationCharge { get; set; }
+        public string LegalDescription { get; set; }
+        public string UseOfProceedsName { get; set; }
+        public int LienPosition { get; set; }
+        public string ReferralEmail { get; set; }
+        public double FindersFee { get; set; }
+
+        public string FolderNameUps { get; set; }
+    }
+
+
+    public class InputData
+    {
+        public List<Valuation> Valuations { get; set; }
+    }
+    public class Program
+    {
+        private readonly GraphQLHttpClient _client;
+
+        public Program(string access_token)
+        {
+            
+            _client = new GraphQLHttpClient("https:
+            _client.HttpClient.DefaultRequestHeaders.Add("Authorization", "JWT " + access_token);
+            
+
+            
+            
+
+        }
+
+        
+
+        
+        public static (int Beds, decimal Baths, int SqFt)? GetBedsBathsSqFtFromJson(string valuationsJson)
+        {
+            
+            var valuations = JsonConvert.DeserializeObject<List<dynamic>>(valuationsJson);
+
+            if (valuations == null || !valuations.Any())
+                return null;
+
+            
+            foreach (var valuation in valuations)
+            {
+                if (valuation.propertyBeds != null && valuation.propertyBaths != null && valuation.propertySquareFeet != null)
+                {
+                    int beds = (int)valuation.propertyBeds;
+                    decimal baths = decimal.Parse((string)valuation.propertyBaths);
+                    decimal squareFeet = decimal.Parse((string)valuation.propertySquareFeet);
+                    int sqft = (int)Math.Round(squareFeet);
+                    return (beds, baths, sqft);
+                }
+            }
+
+            return null; 
+        }
+
+        
+        public class TokenResponse
+        {
+            public string Refresh { get; set; }
+            public string Access { get; set; }
+        }
+
+        public static async Task<string> GetAccessTokenAsync(string userName, string password)
+        {
+            using (var client = new HttpClient())
+            {
+                var url = "https:
+                var payload = new
+                {
+                    username = userName,
+                    password = password
+                };
+                var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
+
+                var response = await client.PostAsync(url, content);
+                response.EnsureSuccessStatusCode();
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(responseContent);
+
+                return tokenResponse.Access;
+            }
+        }
+
+
+
+        
+
+        
+        public static void TruncateGraphqlTables()
+        {
+            string server = "UAM_REPORTING"; 
+            string[] tablesToTruncate = new string[]
+            {
+        "Assets_graphql",
+        "PropertyInfo_graphql",
+        "Applicants_graphql",
+        "AssetApplicantMap_graphql",
+        "Underwriting_graphql",
+        "Debt_graphql"
+            };
+
+            foreach (string table in tablesToTruncate)
+            {
+                string truncateSql = $"DELETE FROM {table};";
+                try
+                {
+                    Query q = new Query(truncateSql, server);
+                    q.Execute();
+                    Console.WriteLine($"Successfully truncated table: {table}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error truncating table {table}: {ex.Message}");
+                }
+            }
+        }
+
+
+        
+        public int GetTitleHeldInTypeId(string titleHeldInType)
+        {
+            Query getTitleTypeId = new Query("SELECT title_held_in_type_id FROM TitleHeldInTypeLookup WHERE lookup = '" + titleHeldInType + "'", "UAM_REPORTING");
+            DataTable res = getTitleTypeId.ExecuteTable();
+            DataRow newestRecord = res.Rows[0];
+
+            return newestRecord.Field<int>("title_held_in_type_id");
+        }
+
+        public static int GetMaritalStatusIdFromDatabase(string maritalStatus)
+        {
+            if (string.IsNullOrEmpty(maritalStatus))
+            {
+                return 0; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT id FROM MaritalStatus WHERE status COLLATE SQL_Latin1_General_CP1_CI_AS = @Status";
+            Query q = new Query(query, server);
+            q.AddParameter("@Status", maritalStatus);
+
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["id"]);
+            }
+
+            return 0; 
+        }
+
+        public static int GetApplicantId(
+            string firstName,
+            string lastName,
+            string email,
+            DateTime? dob)
+        {
+            string server = "UAM_REPORTING";
+            string query = @"
+            SELECT id 
+            FROM Applicants 
+            WHERE 
+                FIRST_NAME = @FirstName AND 
+                LAST_NAME = @LastName AND 
+                EMAIL = @Email AND 
+                DOB = @DOB";
+
+            Query q = new Query(query, server);
+
+            q.AddParameter("@FirstName", firstName ?? (object)DBNull.Value);
+            q.AddParameter("@LastName", lastName ?? (object)DBNull.Value);
+            q.AddParameter("@Email", email ?? (object)DBNull.Value);
+            q.AddParameter("@DOB", dob ?? (object)DBNull.Value);
+
+            DataTable result = q.ExecuteTable();
+
+            if (result.Rows.Count > 0)
+            {
+                for (int i = 0; i < result.Rows.Count; i++)
+                {
+                    Console.WriteLine(result.Rows[i]["id"]);
+
+                }
+                return Convert.ToInt32(result.Rows[0]["id"]);
+            }
+
+            return 0; 
+        }
+
+        public static int GetLenderId(string lenderName)
+        {
+            if (string.IsNullOrEmpty(lenderName))
+            {
+                return 0; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT lender_id FROM LenderMap WHERE name COLLATE SQL_Latin1_General_CP1_CI_AS = @LenderName";
+            Query q = new Query(query, server);
+            q.AddParameter("@LenderName", lenderName);
+
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["lender_id"]);
+            }
+
+            return 0; 
+        }
+
+        public static int GetDebtTypeId(string debtType)
+        {
+            if (string.IsNullOrEmpty(debtType))
+            {
+                return 0; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT debttype_id FROM DebtTypeLookup WHERE lookup COLLATE SQL_Latin1_General_CP1_CI_AS = @DebtType";
+            Query q = new Query(query, server);
+            q.AddParameter("@DebtType", debtType);
+
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["debttype_id"]);
+            }
+
+            return 0; 
+        }
+
+        public static int GetOccupancyTypeId(string occupancyType)
+        {
+            if (string.IsNullOrEmpty(occupancyType))
+            {
+                return 1; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT occupancytype_id FROM OccupancyTypeMap WHERE lookup COLLATE SQL_Latin1_General_CP1_CI_AS = @OccupancyType";
+            Query q = new Query(query, server);
+            q.AddParameter("@OccupancyType", occupancyType);
+
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["occupancytype_id"]);
+            }
+
+            return 1; 
+        }
+
+        public static int GetPropertyTypeId(string propertyType)
+        {
+            if (string.IsNullOrEmpty(propertyType))
+            {
+                return 0; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT propertytype_id FROM PropertyTypeMap WHERE lookup COLLATE SQL_Latin1_General_CP1_CI_AS = @PropertyType";
+            Query q = new Query(query, server);
+            q.AddParameter("@PropertyType", propertyType);
+
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["propertytype_id"]);
+            }
+
+            return 0; 
+        }
+
+        public static int GetProceedsUseId(string proceedsUse)
+        {
+            if (string.IsNullOrEmpty(proceedsUse))
+            {
+                return 0; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT proceedsuse_id FROM ProceedsUseMap WHERE lookup COLLATE SQL_Latin1_General_CP1_CI_AS = @ProceedsUse";
+            Query q = new Query(query, server);
+            q.AddParameter("@ProceedsUse", proceedsUse);
+
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["proceedsuse_id"]);
+            }
+
+            return 0; 
+        }
+
+        public static int GetPropertyConditionId(string propertyCondition)
+        {
+            if (string.IsNullOrEmpty(propertyCondition))
+            {
+                return 0; 
+            }
+
+            string server = "UAM_REPORTING";
+            string query = "SELECT id FROM PropertyConditions WHERE condition COLLATE SQL_Latin1_General_CP1_CI_AS = @PropertyCondition";
+            Query q = new Query(query, server);
+            q.AddParameter("@PropertyCondition", propertyCondition);
+
+            DataTable result = q.ExecuteTable();
+            if (result.Rows.Count > 0)
+            {
+                return Convert.ToInt32(result.Rows[0]["id"]);
+            }
+
+            return 0; 
+        }
+
+
+
+        public static void InsertAssetData(string assetId, Asset asset, string userName)
+        {
+            string server = "UAM_REPORTING";
+
+            
+            double exchangeRateAdjustment = 0.0; 
+            double exchangeRate = asset.ExchangeRate + exchangeRateAdjustment;
+            double unlockPercent = asset.InvestmentAmount / asset.InputHomeValue * exchangeRate;
+            double thf = (asset.InvestmentAmount + (asset.InputHomeValue * unlockPercent)) / asset.InputHomeValue;
+            double maxProceeds = ((asset.ThfLimit / 100 - thf) * asset.InputHomeValue) / exchangeRate + asset.InvestmentAmount;
+            string address_1_2 = asset.Street + ", " + (asset.UnitNumber ?? "");
+            if (asset.UnitNumber == null || asset.UnitNumber.Replace(" ", "").Equals(""))
+            {
+                address_1_2 = asset.Street;
+            }
+
+
+            string insertAssetSql = @"
+        INSERT INTO Assets_graphql (
+            ID,
+            EFFECTIVE_DATE,
+            LIEN_POSITION,
+            ORIGINATION_FEE,
+            factor,
+            PricingVersion,
+            flood_zone,
+            ADDRESS_1,
+            ADDRESS_2,
+            CITY,
+            STATE,
+            ZIP,
+            ZIP_FULL,
+            COUNTY,
+            FIPS,
+            APN,
+            INVESTMENT_PAYMENT,
+            STARTING_HOME_VALUE,
+            FOLDER_NAME_UPS,
+            EXCHANGE_RATE,
+            COST_LIMIT,
+            TOTAL_HOME_FINANCE_LIMIT,
+            TERM,
+            COST_LIMIT_BASIS,
+            FINDERS_FEE,
+            LOCKOUT_MONTHS,
+            OCCUPANCYTYPE_ID,
+            PROPERTYTYPE_ID,
+            PROCEEDSUSE_ID,
+            PRODUCT_ID,
+            MAX_ID,
+            PROPERTYCONDITION_ID,
+            DOC_MAINTENANCE_ADDENDUM,
+            DOC_CONSENT_OF_SPOUSE,
+            update_time,
+            update_by,
+            LEGAL_DESC,
+            MAX_IMPORTED_LIEN_POSITION,
+            DTI_ESCROW_STATUS,
+            address_full,
+            address_simple,
+            address_1_2
+        )
+        VALUES (
+            @AssetId,
+            @EffectiveDate,
+            @LienPosition,
+            @OriginationFee,
+            @Factor,
+            @PricingVersion,
+            @FloodZone,
+            @Address1,
+            @Address2,
+            @City,
+            @State,
+            @Zip,
+            @ZipFull,
+            @County,
+            @Fips,
+            @Apn,
+            @InvestmentPayment,
+            @StartingHomeValue,
+            @FolderNameUps,
+            @ExchangeRate,
+            @CostLimit,
+            @TotalHomeFinanceLimit,
+            @Term,
+            @CostLimitBasis,
+            @FindersFee,
+            @LockoutMonths,
+            @OccupancyTypeId,
+            @PropertyTypeId,
+            @ProceedsUseId,
+            @ProductId,
+            @MaxId,
+            @PropertyConditionId,
+            @DocMaintenanceAddendum,
+            @DocConsentOfSpouse,
+            @UpdateTime,
+            @UpdateBy,
+            @LegalDesc,
+            @MaxImportedLienPosition,
+            @DtiEscrowStatus,
+            @addressFull,
+            @addressSimple,
+            @address1_2
+    );";
+
+            Query q = new Query(insertAssetSql, server);
+
+            q.AddParameter("@AssetId", assetId);
+            q.AddParameter("@EffectiveDate", DateTime.UtcNow); 
+            q.AddParameter("@LienPosition", asset.LienPosition);
+            q.AddParameter("@OriginationFee", asset.OriginationCharge);
+            q.AddParameter("@Factor", 1); 
+            q.AddParameter("@PricingVersion", asset.PricingVersion ?? (object)DBNull.Value);
+            q.AddParameter("@FloodZone", asset.FloodZoneHazardIndicator ?? (object)DBNull.Value);
+            q.AddParameter("@Address1", asset.Street ?? (object)DBNull.Value);
+            q.AddParameter("@Address2", asset.UnitNumber ?? (object)DBNull.Value);
+            q.AddParameter("@City", asset.City ?? (object)DBNull.Value);
+            q.AddParameter("@State", asset.State ?? (object)DBNull.Value);
+            q.AddParameter("@Zip", asset.ZipCode ?? (object)DBNull.Value);
+            q.AddParameter("@ZipFull", asset.ZipCode ?? (object)DBNull.Value);
+            q.AddParameter("@County", asset.County ?? (object)DBNull.Value);
+            q.AddParameter("@Fips", asset.FipsCode ?? (object)DBNull.Value);
+            q.AddParameter("@Apn", asset.ParcelNumber ?? (object)DBNull.Value);
+            q.AddParameter("@InvestmentPayment", asset.InvestmentAmount);
+            q.AddParameter("@StartingHomeValue", asset.InputHomeValue);
+            q.AddParameter("@FolderNameUps", asset.FolderNameUps ?? (object)DBNull.Value);
+            q.AddParameter("@ExchangeRate", exchangeRate);
+            q.AddParameter("@CostLimit", asset.AnnualizedCostLimit);
+            q.AddParameter("@TotalHomeFinanceLimit", asset.ThfLimit / 100);
+            q.AddParameter("@Term", asset.TermInYears * 12);
+            q.AddParameter("@CostLimitBasis", asset.InvestmentAmount);
+            q.AddParameter("@FindersFee", asset.FindersFee);
+            q.AddParameter("@LockoutMonths", 0); 
+            q.AddParameter("@OccupancyTypeId", GetOccupancyTypeId(asset.PropertyUsage));
+            q.AddParameter("@PropertyTypeId", GetPropertyTypeId(asset.PropertyType));
+            q.AddParameter("@ProceedsUseId", GetProceedsUseId(asset.UseOfProceedsName));
+            q.AddParameter("@ProductId", 3); 
+            q.AddParameter("@MaxId", assetId);
+            q.AddParameter("@PropertyConditionId", GetPropertyConditionId(asset.PropertyCondition));
+            q.AddParameter("@DocMaintenanceAddendum", 0); 
+            q.AddParameter("@DocConsentOfSpouse", 0); 
+            q.AddParameter("@UpdateTime", DateTime.UtcNow);
+            q.AddParameter("@UpdateBy", userName);
+            q.AddParameter("@LegalDesc", asset.LegalDescription ?? (object)DBNull.Value);
+            q.AddParameter("@MaxImportedLienPosition", asset.LienPosition);
+            q.AddParameter("@DtiEscrowStatus", asset.DtiEscrowStatus ?? (object)DBNull.Value);
+            q.AddParameter("@addressFull", asset.Street + ", " + asset.City + ", " + asset.State + " " + asset.ZipCode);
+            q.AddParameter("@addressSimple", asset.Street);
+            q.AddParameter("@address1_2", address_1_2);
+            
+            
+            q.ApplyCommonVariables();
+            q.Execute();
+        }
+
+
+
+        public static void InsertPropertyInfo(
+            string assetId,
+            int titleHeldInTypeId,
+            DateTime? purchaseDate,
+            decimal? purchaseAmount,
+            string titleVesting,
+            int? sqft,
+            int? beds,
+            decimal? baths,
+            string userName)
+        {
+            string server = "UAM_REPORTING";
+            string insertPropertySql = @"
+            INSERT INTO PropertyInfo_graphql (
+                asset_id,
+                title_held_in_type_id,
+                purchase_date,
+                purchase_amount,
+                title_vesting,
+                sqft,
+                beds,
+                baths,
+                update_time,
+                update_by
+            )
+            VALUES (
+                @AssetId,
+                @TitleHeldInTypeId,
+                @PurchaseDate,
+                @PurchaseAmount,
+                @TitleVesting,
+                @SqFt,
+                @Beds,
+                @Baths,
+                @UpdateTime,
+                @UpdateBy
+            );";
+            Query q = new Query(insertPropertySql, server);
+
+            Console.WriteLine("Asset ID: " + assetId);
+            Console.WriteLine("Table: PropertyInfo");
+
+            q.AddParameter("@AssetId", assetId);
+            q.AddParameter("@TitleHeldInTypeId", titleHeldInTypeId);
+            q.AddParameter("@PurchaseDate", purchaseDate ?? (object)DBNull.Value);
+            q.AddParameter("@PurchaseAmount", purchaseAmount ?? (object)DBNull.Value);
+            q.AddParameter("@TitleVesting", titleVesting ?? (object)DBNull.Value);
+            q.AddParameter("@SqFt", sqft ?? (object)DBNull.Value);
+            q.AddParameter("@Beds", beds ?? (object)DBNull.Value);
+            q.AddParameter("@Baths", baths ?? (object)DBNull.Value);
+            q.AddParameter("@UpdateTime", DateTime.UtcNow);
+            q.AddParameter("@UpdateBy", userName);
+
+            q.ApplyCommonVariables();
+            q.Execute();
+        }
+
+        public static int InsertApplicantInfo(
+            string firstName,
+            string lastName,
+            string middleName,
+            string email,
+            long phone,
+            DateTime? dob,
+            int maritalStatusId,
+            string userName)
+        {
+            string server = "UAM_REPORTING";
+            string insertApplicantSql = @"
+            INSERT INTO Applicants_graphql (
+                FIRST_NAME,
+                LAST_NAME,
+                MIDDLE_NAME,
+                EMAIL,
+                PHONE,
+                DOB,
+                MARITALSTATUS_ID,
+                update_time,
+                update_by
+            )
+            VALUES (
+                @FirstName,
+                @LastName,
+                @MiddleName,
+                @Email,
+                @Phone,
+                @DOB,
+                @MaritalStatusId,
+                @UpdateTime,
+                @UpdateBy
+            );";
+
+            Query q = new Query(insertApplicantSql, server);
+
+            q.AddParameter("@FirstName", firstName ?? (object)DBNull.Value);
+            q.AddParameter("@LastName", lastName ?? (object)DBNull.Value);
+            q.AddParameter("@MiddleName", middleName ?? (object)DBNull.Value);
+            q.AddParameter("@Email", email ?? (object)DBNull.Value);
+            q.AddParameter("@Phone", phone);
+            q.AddParameter("@DOB", dob ?? (object)DBNull.Value);
+            q.AddParameter("@MaritalStatusId", maritalStatusId);
+            q.AddParameter("@UpdateTime", DateTime.UtcNow);
+            q.AddParameter("@UpdateBy", userName);
+
+            q.ApplyCommonVariables();
+            q.Execute();
+            int appId = GetApplicantId(firstName, lastName, email, dob);
+            return appId;
+        }
+
+        public static void InsertAssetApplicantMap(
+            string assetId,
+            int applicantTypeId,
+            int applicantId,
+            string userName)
+        {
+            string server = "UAM_REPORTING";
+            string insertAssetApplicantMapSql = @"
+            INSERT INTO AssetApplicantMap_graphql (
+                ASSET_ID,
+                APPLICANTTYPE_ID,
+                APPLICANT_ID,
+                update_time,
+                update_by
+            )
+            VALUES (
+                @AssetId,
+                @ApplicantTypeId,
+                @ApplicantId,
+                @UpdateTime,
+                @UpdateBy
+            );";
+
+            Query q = new Query(insertAssetApplicantMapSql, server);
+
+            q.AddParameter("@AssetId", assetId ?? (object)DBNull.Value);
+            q.AddParameter("@ApplicantTypeId", applicantTypeId);
+            q.AddParameter("@ApplicantId", applicantId);
+            q.AddParameter("@UpdateTime", DateTime.UtcNow);
+            q.AddParameter("@UpdateBy", userName);
+
+            q.ApplyCommonVariables();
+            q.Execute();
+        }
+
+        public static void InsertUnderwritingData(string assetId, Underwriting underwriting, string userName)
+        {
+            string server = "UAM_REPORTING";
+
+            double exchangeRateAdjustment = 0.0; 
+            double exchangeRate = underwriting.ExchangeRate + exchangeRateAdjustment;
+            double unlockPercent = underwriting.InvestmentAmount / underwriting.InputHomeValue * exchangeRate;
+            double thf = (underwriting.SecuredDebt + (underwriting.InputHomeValue * unlockPercent)) / underwriting.InputHomeValue;
+            double maxProceeds = ((underwriting.ThfLimit / 100 - thf) * underwriting.InputHomeValue) / exchangeRate + underwriting.InvestmentAmount;
+
+            int creditScoreModelId = underwriting.IsVantage ? 8 : 1;
+
+            string insertUnderwritingSql = @"
+                INSERT INTO Underwriting_graphql (
+                    asset_id,
+                    credit_score,
+                    CreditScoreModel_id,
+                    secured_debt,
+                    max_proceeds,
+                    update_time,
+                    update_by
+                )
+                VALUES (
+                    @AssetId,
+                    @CreditScore,
+                    @CreditScoreModelId,
+                    @SecuredDebt,
+                    @MaxProceeds,
+                    @UpdateTime,
+                    @UpdateBy
+                );";
+
+            Query q = new Query(insertUnderwritingSql, server);
+
+            q.AddParameter("@AssetId", assetId);
+            q.AddParameter("@CreditScore", underwriting.CreditScore);
+            q.AddParameter("@CreditScoreModelId", creditScoreModelId);
+            q.AddParameter("@SecuredDebt", underwriting.SecuredDebt);
+            q.AddParameter("@MaxProceeds", maxProceeds);
+            q.AddParameter("@UpdateTime", DateTime.UtcNow);
+            q.AddParameter("@UpdateBy", userName);
+
+            q.ApplyCommonVariables();
+            q.Execute();
+        }
+
+
+        public static void InsertDebtData(string assetId, List<Debt> debtList, string userName)
+        {
+            string server = "UAM_REPORTING";
+            foreach (var debt in debtList)
+            {
+                string insertDebtSql = @"
+                    INSERT INTO Debt_graphql (
+                        ASSET_ID,
+                        ASOF,
+                        lender_id,
+                        DEBTTYPE_ID,
+                        RATE,
+                        BALANCE,
+                        LIEN_POSITION,
+                        LIEN_POSITION_AT_ORIGINATION,
+                        PAYMENT,
+                        ACCOUNT_OPEN_DATE,
+                        initial,
+                        update_time,
+                        update_by
+                    )
+                    VALUES (
+                        @AssetId,
+                        @Asof,
+                        @LenderId,
+                        @DebtTypeId,
+                        @Rate,
+                        @Balance,
+                        @LienPosition,
+                        @LienPositionAtOrigination,
+                        @Payment,
+                        @AccountOpenDate,
+                        @Initial,
+                        @UpdateTime,
+                        @UpdateBy
+                    );";
+
+                Query q = new Query(insertDebtSql, server);
+
+                q.AddParameter("@AssetId", assetId);
+                q.AddParameter("@Asof", debt.CreatedAt);
+                q.AddParameter("@LenderId", GetLenderId(debt.Name)); 
+                q.AddParameter("@DebtTypeId", GetDebtTypeId(debt.MortgageProductType)); 
+                q.AddParameter("@Rate", debt.InterestRate);
+                q.AddParameter("@Balance", debt.UnpaidBalanceAmount);
+                q.AddParameter("@LienPosition", debt.LienPosition);
+                q.AddParameter("@LienPositionAtOrigination", debt.LienPosition);
+                q.AddParameter("@Payment", debt.MonthlyPaymentAmount);
+                q.AddParameter("@AccountOpenDate", debt.AccountOpenedOn);
+                q.AddParameter("@Initial", true);
+                q.AddParameter("@UpdateTime", DateTime.UtcNow);
+                q.AddParameter("@UpdateBy", userName);
+
+                q.ApplyCommonVariables();
+                q.Execute();
+            }
+        }
+
+        
+        public async Task<string> ImportAssetAsync(string assetId, string userName = "test")
+        {
+            
+            var fetchAssetDataQuery = new GraphQLRequest
+            {
+                Query = @"
+                query GetAssetData($pk: String!) {
+                    application(externalId: $pk) {
+                        id
+                        pricingVersion
+                        property {
+                            address {
+                                street
+                                unitNumber
+                                city
+                                state
+                                zipCode
+                                county
+                                fipsCode
+                                parcelNumber
+                            }
+                            propertyType
+                            propertyUsage
+                            dtiEscrowStatus
+                        }
+                        valuations {
+                            floodZoneHazardIndicator
+                            propertyCondition
+                            modifiedAt
+                        }
+                        offers {
+                            investmentAmount
+                            inputHomeValue
+                            exchangeRate
+                            annualizedCostLimit
+                            thfLimit
+                            termInYears
+                        }
+                        expenses {
+                            amount
+                            type
+                        }
+                        titleReport {
+                            legalDescription
+                        }
+                        useOfProceeds
+                        tradelinesCalculations{
+                          lienPosition
+                        }
+                    }
+                }",
+                Variables = new { pk = assetId }
+            };
+
+            var fetchAssetDataResponse = await _client.SendQueryAsync<dynamic>(fetchAssetDataQuery);
+            string jsonResponse = JsonConvert.SerializeObject(fetchAssetDataResponse.Data, Formatting.Indented);
+            Console.WriteLine(jsonResponse);
+
+            var application = fetchAssetDataResponse.Data.application;
+            var property = application.property;
+            var address = property.address;
+            var valuation = ((IEnumerable<dynamic>)application.valuations).FirstOrDefault();
+            var offer = ((IEnumerable<dynamic>)application.offers).FirstOrDefault();
+            var expense = ((IEnumerable<dynamic>)application.expenses).FirstOrDefault(e => (string)e.type == "origination_charge");
+            var titleReport = application.titleReport;
+            var useOfProceeds = application.useOfProceeds;
+            var lienPosStr = application.tradelinesCalculations.lienPosition as JValue;
+            string lienPosString = lienPosStr?.ToString();
+            int lienPos = int.TryParse(lienPosString?.FirstOrDefault().ToString(), out int result) ? result : 0;
+            var referral = application.referral;
+
+
+            var asset = new Asset
+            {
+                Id = application.id,
+                PricingVersion = application.pricingVersion,
+                Street = address.street,
+                UnitNumber = address.unitNumber,
+                City = address.city,
+                State = address.state,
+                ZipCode = address.zipCode,
+                County = address.county,
+                FipsCode = address.fipsCode,
+                ParcelNumber = address.parcelNumber,
+                PropertyType = property.propertyType,
+                PropertyUsage = property.propertyUsage,
+                DtiEscrowStatus = property.dtiEscrowStatus,
+                FloodZoneHazardIndicator = valuation?.floodZoneHazardIndicator,
+                PropertyCondition = valuation?.propertyCondition,
+                InvestmentAmount = offer?.investmentAmount,
+                InputHomeValue = offer?.inputHomeValue,
+                ExchangeRate = offer?.exchangeRate,
+                AnnualizedCostLimit = offer?.annualizedCostLimit,
+                ThfLimit = offer?.thfLimit,
+                TermInYears = offer?.termInYears,
+                OriginationCharge = expense?.amount,
+                LegalDescription = titleReport?.legalDescription,
+                UseOfProceedsName = useOfProceeds,
+                LienPosition = lienPos,
+                ReferralEmail = referral?.email
+            };
+            InsertAssetData(assetId, asset, userName);
+
+            return $"Asset information for asset {assetId} imported successfully.";
+        }
+
+        public async Task<string> ImportPropertyInfoAsync(string assetId, string userName = "test")
+        {
+            
+            
+            var fetchDataQuery = new GraphQLRequest
+            {
+                Query = @"
+            query GetPropertyInfo($pk: String!) {
+                application(externalId: $pk) {
+                    id
+                    property {
+                        id
+                        titleHeld
+                        aquiredOn
+                        aquiredPrice
+                        titleVesting
+                    }
+                    valuations {
+                        id
+                        modifiedAt
+                        deletedAt
+                        propertyBeds
+          	            propertyBaths
+          	            propertySquareFeet
+                        grossLivingArea
+                    }
+                }
+            }",
+                Variables = new { pk = assetId }
+            };
+
+            
+            var fetchDataResponse = await _client.SendQueryAsync<dynamic>(fetchDataQuery);
+            string jsonResponse = JsonConvert.SerializeObject(fetchDataResponse.Data, Formatting.Indented);
+
+            
+            if (fetchDataResponse.Data == null)
+            {
+                Console.WriteLine($"No data returned for asset {assetId}.");
+                return $"No data returned for asset {assetId}.";
+            }
+
+            
+            var applicationData = fetchDataResponse.Data.application;
+            if (applicationData == null)
+            {
+                Console.WriteLine($"No data found for asset {assetId}.");
+                return $"No data found for asset {assetId}.";
+            }
+
+            
+            var property = applicationData.property;
+            var valuations = applicationData.valuations;
+            int typeId = GetTitleHeldInTypeId((string)applicationData.property.titleHeld);
+            if (valuations == null || ((IEnumerable<dynamic>)valuations).Any(v => v.deletedAt != null))
+            {
+                Console.WriteLine($"No valid valuations found for asset {assetId}.");
+                return $"No valid valuations found for asset {assetId}.";
+            }
+
+            
+            string valuationsJson = JsonConvert.SerializeObject(valuations, Formatting.Indented);
+            var valuations_info = GetBedsBathsSqFtFromJson(valuationsJson);
+
+            
+            DateTime? acquiredOn = property.aquiredOn;
+            decimal? aquiredPrice = property.aquiredPrice;
+            string titleVesting = property.titleVesting;
+            int? sqft = valuations_info?.SqFt;
+            int? beds = valuations_info?.Beds;
+            decimal? baths = valuations_info?.Baths;
+
+
+            InsertPropertyInfo(assetId, typeId, acquiredOn, aquiredPrice, titleVesting, sqft, beds, baths, userName);
+
+
+            return $"Property {assetId} added successfully.";
+        }
+
+        public async Task<string> ImportApplicantTableAsync(string assetId, string userName = "test")
+        {
+            var fetchDataQuery = new GraphQLRequest
+            {
+                Query = @"
+                    query GetApplicantsByApplicationId($pk: String!) {
+                        application(externalId: $pk) {
+                            externalId
+    		                    applicationProfiles {
+                                id
+                                position
+                                profile {
+                                    firstName
+                                    lastName
+                                    middleName
+                                    email
+                                    phone
+                                    bornOn
+                                    maritalStatus
+                                    username
+                                    id
+        	                    }
+                            }
+                        }
+                    }",
+                Variables = new { pk = assetId }
+            };
+
+            
+            var fetchDataResponse = await _client.SendQueryAsync<dynamic>(fetchDataQuery);
+            string jsonResponse = JsonConvert.SerializeObject(fetchDataResponse.Data, Formatting.Indented);
+
+            
+            if (fetchDataResponse.Data == null)
+            {
+                Console.WriteLine($"No data returned for asset {assetId}.");
+                return $"No data returned for asset {assetId}.";
+            }
+
+            var applicationData = fetchDataResponse.Data.application;
+            if (applicationData == null)
+            {
+                Console.WriteLine($"No application data found for asset {assetId}.");
+                return $"No application data found for asset {assetId}.";
+            }
+
+            var applicationProfiles = applicationData.applicationProfiles;
+            if (applicationProfiles == null)
+            {
+                Console.WriteLine($"No application profiles found for asset {assetId}.");
+                return $"No application profiles found for asset {assetId}.";
+            }
+
+            foreach (var profileData in applicationProfiles)
+            {
+                var profile = profileData.profile;
+                if (profile == null)
+                {
+                    continue;
+                }
+
+                string firstName = profile.firstName;
+                string lastName = profile.lastName;
+                string middleName = profile.middleName;
+                string email = profile.email;
+                long phone = Convert.ToInt64(Regex.Replace(profile.phone?.ToString() ?? "", @"\D", ""));
+                DateTime? dob = profile.bornOn;
+                string maritalStatus = profile.maritalStatus;
+                int applicantTypeId = profileData.position;
+
+                int maritalStatusId = GetMaritalStatusIdFromDatabase(maritalStatus);
+
+                
+                int applicantid = InsertApplicantInfo(firstName, lastName, middleName, email, phone, dob, maritalStatusId, userName);
+
+                
+                InsertAssetApplicantMap(assetId, applicantTypeId, applicantid, userName);
+            }
+
+            return $"Applicants for asset {assetId} added successfully.";
+        }
+
+        public async Task<string> ImportDebtTableAsync(string assetId, string userName = "test")
+        {
+            var fetchDebtDataQuery = new GraphQLRequest
+            {
+                Query = @"
+                    query GetDebtData($pk: String!) {
+                        application(externalId: $pk) {
+                            tradelines {
+                                createdAt
+                                interestRate
+                                unpaidBalanceAmount
+                                lienPosition
+                                accountOpenedOn
+                                name
+                                monthlyPaymentAmount
+                                mortgageProductType
+                            }
+                        }
+                    }",
+                Variables = new { pk = assetId }
+            };
+
+            var fetchDebtDataResponse = await _client.SendQueryAsync<dynamic>(fetchDebtDataQuery);
+            string jsonResponse = JsonConvert.SerializeObject(fetchDebtDataResponse.Data, Formatting.Indented);
+            Console.WriteLine(jsonResponse);
+
+            var tradelines = fetchDebtDataResponse.Data.application.tradelines;
+            var debtList = new List<Debt>();
+
+            foreach (var tradeline in tradelines)
+            {
+                var debt = new Debt
+                {
+                    CreatedAt = tradeline.createdAt != null ? (DateTime)tradeline.createdAt : DateTime.MinValue,
+                    InterestRate = tradeline.interestRate != null ? (double)tradeline.interestRate : 0.0,
+                    UnpaidBalanceAmount = tradeline.unpaidBalanceAmount != null ? (double)tradeline.unpaidBalanceAmount : 0.0,
+                    LienPosition = tradeline.lienPosition != null ? (int)tradeline.lienPosition : 0,
+                    AccountOpenedOn = tradeline.accountOpenedOn != null ? (DateTime)tradeline.accountOpenedOn : DateTime.MinValue,
+                    Name = tradeline.name != null ? (string)tradeline.name : string.Empty,
+                    MonthlyPaymentAmount = tradeline.monthlyPaymentAmount != null ? (double)tradeline.monthlyPaymentAmount : 0.0,
+                    MortgageProductType = tradeline.mortgageProductType != null ? (string)tradeline.mortgageProductType : string.Empty
+                };
+                if (debt.LienPosition != 0)
+                {
+                    debtList.Add(debt);
+                }
+            }
+
+            InsertDebtData(assetId, debtList, userName);
+            return $"Debt information for asset {assetId} imported successfully.";
+        }
+
+        public async Task<string> ImportUnderwritingTable(string assetId, string userName = "test")
+        {
+            var fetchUnderwritingDataQuery = new GraphQLRequest
+            {
+                Query = @"
+                    query GetUnderwritingData($pk: String!) {
+                        application(externalId: $pk) {
+                            offers {
+                                inputFico
+                                inputDebt
+                                investmentAmount
+                                inputHomeValue
+                                thfLimit
+                                exchangeRate
+                                investmentPercentage
+                            }
+                            creditReports {
+                                isVantage
+                            }
+                        }
+                    }",
+                Variables = new { pk = assetId }
+            };
+
+            var fetchUnderwritingDataResponse = await _client.SendQueryAsync<dynamic>(fetchUnderwritingDataQuery);
+            string jsonResponse = JsonConvert.SerializeObject(fetchUnderwritingDataResponse.Data, Formatting.Indented);
+            Console.WriteLine(jsonResponse);
+
+            var application = fetchUnderwritingDataResponse.Data.application;
+            var offer = application.offers[0];
+            var creditReport = application.creditReports[0];
+
+            var underwriting = new Underwriting
+            {
+                CreditScore = offer.inputFico != null ? (double)offer.inputFico : 0.0,
+                SecuredDebt = offer.inputDebt != null ? (double)offer.inputDebt : 0.0,
+                InvestmentAmount = offer.investmentAmount != null ? (double)offer.investmentAmount : 0.0,
+                InputHomeValue = offer.inputHomeValue != null ? (double)offer.inputHomeValue : 0.0,
+                ThfLimit = offer.thfLimit != null ? (double)offer.thfLimit : 0.0,
+                ExchangeRate = offer.exchangeRate != null ? (double)offer.exchangeRate : 0.0,
+                InvestmentPercentage = offer.investmentPercentage != null ? (double)offer.investmentPercentage : 0.0,
+                IsVantage = creditReport.isVantage != null ? (bool)creditReport.isVantage : false
+            };
+
+            InsertUnderwritingData(assetId, underwriting, userName);
+
+            return $"Underwriting information for asset {assetId} imported successfully.";
+        }
+
+        public static List<string> GetAllAssetIds()
+        {
+            string server = "UAM_REPORTING";
+            string query = "WITH RankedAssets AS (SELECT external_id, created_at, NTILE(1000) OVER (ORDER BY created_at) AS tile_num FROM API_APPLICATION) SELECT external_id, created_at FROM RankedAssets WHERE tile_num = 1;";
+            Query q = new Query(query, server);
+
+            DataTable result = q.ExecuteTable();
+            List<string> assetIds = new List<string>();
+
+            foreach (DataRow row in result.Rows)
+            {
+                assetIds.Add(row["external_id"].ToString());
+            }
+
+            return assetIds;
+        }
+
+
+
+        static async Task Main(string[] args)
+        {
+            string access_token = await GetAccessTokenAsync("badger@unlock.com", "J#3g5\\lC5LN17Jv+oW");
+            Program x = new Program(access_token);
+            Constants.SetEnvironment(Constants.GetEnvironment("DEV"));
+
+            
+            
+            
+            
+            
+            
+            
+            
+
+
+            TruncateGraphqlTables();
+            Console.WriteLine($"Access Token: {access_token}");
+
+            
+            List<string> assetIds = new List<string> { "84823725225993" };
+            
+            
+            string result_str = "";
+            foreach (string user_ext_id in assetIds)
+            {
+                Console.WriteLine($"Processing asset with ID: '{user_ext_id}'");
+                
+                result_str = await x.ImportAssetAsync(user_ext_id); 
+                Console.WriteLine(result_str);
+                result_str = await x.ImportPropertyInfoAsync(user_ext_id); 
+                Console.WriteLine(result_str);
+                result_str = await x.ImportApplicantTableAsync(user_ext_id); 
+                Console.WriteLine(result_str);
+                result_str = await x.ImportDebtTableAsync(user_ext_id); 
+                Console.WriteLine(result_str);
+                result_str = await x.ImportUnderwritingTable(user_ext_id); 
+                Console.WriteLine(result_str);
+            }
+
+
+            Console.WriteLine($"Done ;)");
+            Console.WriteLine($"Reconcilling tables...");
+
+            ReconcileTables();
+
+            Thread.Sleep(100000); 
+        }
+
+        public static void ReconcileTables()
+        {
+            string server = "UAM_REPORTING"; 
+            string[] tablesToReconcile = new string[]
+            {
+        "Assets",
+        "PropertyInfo",
+        "Applicants",
+        "AssetApplicantMap",
+        "Underwriting",
+        "Debt"
+            };
+
+            List<string> differences = new List<string>();
+            differences.Add("Table,Column,AssetId,GraphqlValue,NonGraphqlValue");
+
+            foreach (string table in tablesToReconcile)
+            {
+                Console.WriteLine($"Reconciling table {table}...");
+                string graphqlTable = table + "_graphql";
+                string nonGraphqlTable = table;
+
+                string fetchGraphqlDataSql = $"SELECT * FROM {graphqlTable};";
+
+                string fetchNonGraphqlDataSql = $"SELECT * FROM {nonGraphqlTable} WHERE asset_id = @key;";
+                if (table.Equals("Assets"))
+                {
+                    fetchNonGraphqlDataSql = $"SELECT * FROM {nonGraphqlTable} WHERE ID = @key;";
+                }
+                else if (table.Equals("Applicants"))
+                {
+                    fetchNonGraphqlDataSql = $"SELECT * FROM {nonGraphqlTable} WHERE email = @key;";
+                }
+                Query fetchGraphqlDataQuery = new Query(fetchGraphqlDataSql, server);
+                DataTable graphqlData = fetchGraphqlDataQuery.ExecuteTable();
+
+                foreach (DataRow graphqlRow in graphqlData.Rows)
+                {
+                    string key = "";
+                    Query fetchNonGraphqlDataQuery = new Query(fetchNonGraphqlDataSql, server);
+                    if (table.Equals("Assets"))
+                    {
+                        key = graphqlRow["id"].ToString();
+                    }
+                    else if (table.Equals("Applicants"))
+                    {
+                        key = graphqlRow["email"].ToString();
+                    }
+                    else
+                    {
+                        key = graphqlRow["asset_id"].ToString();
+                    }
+                    fetchNonGraphqlDataQuery.AddParameter("@key", key);
+                    DataTable nonGraphqlData = fetchNonGraphqlDataQuery.ExecuteTable();
+
+                    if (nonGraphqlData.Rows.Count > 0)
+                    {
+                        DataRow nonGraphqlRow = nonGraphqlData.Rows[0];
+                        foreach (DataColumn column in graphqlData.Columns)
+                        {
+                            string columnName = column.ColumnName;
+                            string graphqlValue = graphqlRow[columnName]?.ToString() ?? string.Empty;
+                            string nonGraphqlValue = nonGraphqlRow[columnName]?.ToString() ?? string.Empty;
+
+                            if (columnName.Equals("update_time") || columnName.Equals("update_by"))
+                            {
+                                continue;
+                            }
+
+                            if (graphqlValue != nonGraphqlValue && !graphqlValue.Equals(nonGraphqlValue))
+                            {
+                                differences.Add($"{table},{columnName},{key},\"{graphqlValue.Replace("\"", "\"\"")}\",\"{nonGraphqlValue.Replace("\"", "\"\"")}\"");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        differences.Add($"{table},ALL,{key},Row exists,Row does not exist");
+                    }
+                }
+            }
+
+            
+            string csvFilePath = "reconciliation_differences.csv";
+            File.WriteAllLines(csvFilePath, differences);
+            Console.WriteLine($"Reconciliation completed. Differences saved to {csvFilePath}");
+        }
+
+    }
+}
+
+
+--- FILE: GraphQL\GraphQL\GraphQL\Properties\AssemblyInfo.cs ---
+[assembly: AssemblyTitle("GraphQL")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("Amazon.com")]
+[assembly: AssemblyProduct("GraphQL")]
+[assembly: AssemblyCopyright("Copyright © Amazon.com 2025")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+
+
+
+[assembly: ComVisible(false)]
+
+
+[assembly: Guid("0c2abd0d-6666-49ee-859d-70c7bbbe5834")]
+
+
+
+
+
+
+
+
+
+
+
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
+
+--- FILE: GraphQL\GraphQL\GraphQL\Recon.cs ---
+namespace GraphQL
+{
+    public class Recon
+    {
+        private readonly string _server;
+
+        public Recon(string server)
+        {
+            _server = server;
+        }
+
+        public void CompareTables(string table1, string table2, string outputCsvPath)
+        {
+            DataTable dt1 = LoadTable(table1);
+            DataTable dt2 = LoadTable(table2);
+
+            var differences = GetDifferences(dt1, dt2);
+            WriteDifferencesToCsv(differences, outputCsvPath);
+        }
+
+        private DataTable LoadTable(string tableName)
+        {
+            string sql = $"SELECT * FROM {tableName}";
+            Query q = new Query(sql, _server);
+            return q.ExecuteTable();
+        }
+
+        private List<Dictionary<string, object>> GetDifferences(DataTable dt1, DataTable dt2)
+        {
+            var differences = new List<Dictionary<string, object>>();
+
+            var dt1Dict = dt1.AsEnumerable().Select(row => row.ItemArray.Select(item => item?.ToString() ?? "").ToArray()).ToList();
+            var dt2Dict = dt2.AsEnumerable().Select(row => row.ItemArray.Select(item => item?.ToString() ?? "").ToArray()).ToList();
+
+            foreach (var row1 in dt1Dict)
+            {
+                if (!dt2Dict.Any(row2 => row2.SequenceEqual(row1)))
+                {
+                    var diff = new Dictionary<string, object> { { "Status", "Deleted" } };
+                    for (int i = 0; i < dt1.Columns.Count; i++)
+                    {
+                        diff[dt1.Columns[i].ColumnName] = row1[i];
+                    }
+                    differences.Add(diff);
+                }
+            }
+
+            foreach (var row2 in dt2Dict)
+            {
+                if (!dt1Dict.Any(row1 => row1.SequenceEqual(row2)))
+                {
+                    var diff = new Dictionary<string, object> { { "Status", "Added" } };
+                    for (int i = 0; i < dt2.Columns.Count; i++)
+                    {
+                        diff[dt2.Columns[i].ColumnName] = row2[i];
+                    }
+                    differences.Add(diff);
+                }
+            }
+
+            return differences;
+        }
+
+        private void WriteDifferencesToCsv(List<Dictionary<string, object>> differences, string outputCsvPath)
+        {
+            if (differences.Count == 0)
+            {
+                Console.WriteLine("No differences found.");
+                return;
+            }
+
+            using (var writer = new StreamWriter(outputCsvPath, false, Encoding.UTF8))
+            using (var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)))
+            {
+                var headers = differences.SelectMany(d => d.Keys).Distinct().ToList();
+                csv.WriteRecords(differences.Select(d => headers.ToDictionary(h => h, h => d.ContainsKey(h) ? d[h] : "")));
+            }
+
+            Console.WriteLine($"CSV saved to {outputCsvPath}");
+        }
+    }
+}
+
+
+--- FILE: SignalRService\SignalRService\Program.cs ---
+namespace SignalRService
+{
+    public class Program
+    {
+
+        public 
+        const string ServerURI = "http:
+        static void Main(string[] args)
+        {
+
+            try
+            {
+                IDisposable SignalR  = WebApp.Start(ServerURI);
+            }
+            catch (TargetInvocationException d)
+            {
+                Console.WriteLine(d.Message);
+                Console.WriteLine("Server failed to start. A server is already running on " + ServerURI);
+                
+                return;
+            }
+            Console.ReadLine();
+        }
+    }
+
+    class Startup
+    {
+        public void Configuration(IAppBuilder app)
+        {
+            app.UseCors(CorsOptions.AllowAll);
+            app.MapSignalR();
+        }
+    }
+    public class MyHub : Hub
+    {
+        public void Send(string name, string message)
+        {
+            Clients.All.addMessage(name, message);
+            
+        }
+        public override Task OnConnected()
+        {
+            Console.WriteLine("Client connected: " + Context.ConnectionId);
+            Hub d;
+            return base.OnConnected();
+        }
+        public override Task OnDisconnected(bool stop)
+        {
+            Console.WriteLine("Client disconnected: " + Context.ConnectionId);
+            return base.OnDisconnected(stop);
+        }
+    }
+}
+
+
+--- FILE: SignalRService\SignalRService\Properties\AssemblyInfo.cs ---
+[assembly: AssemblyTitle("SignalRService")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("Microsoft")]
+[assembly: AssemblyProduct("SignalRService")]
+[assembly: AssemblyCopyright("Copyright © Microsoft 2017")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+
+
+
+[assembly: ComVisible(false)]
+
+
+[assembly: Guid("88eb6ea9-64ac-4f6a-a5d6-3188f9c3b4d4")]
+
+
+
+
+
+
+
+
+
+
+
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
+
+--- FILE: CoreLogicLib\Hub.cs ---
+namespace CoreLogicLib
+{
+    public class CL
+    {
+
+        string _key;
+
+        string _client_id;
+        string _client_secret;
+
+        public CL(string client_id,string client_secret)
+        {
+            _client_id = client_id;
+            _client_secret = client_secret;
+        }
+
+        public void GetAuthKey()
+        {
+            var client = new RestClient("https:
+            var request = new RestRequest(Method.POST);
+            request.AddHeader("cache-control", "no-cache");
+            request.AddHeader("content-type", "application/x-www-form-urlencoded");
+            string parameter = $"grant_type=client_credentials&client_id={_client_id}&client_secret={_client_secret}";
+            request.AddParameter("application/x-www-form-urlencoded", parameter, ParameterType.RequestBody);
+            IRestResponse response = client.Execute(request);
+            _key = "Bearer E5QdRncWtM9BRjRcCkBKGUV0OgdA";
+        }
+        public string GetPropertyID(string address, string zip)
+        {
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters.Add("address", address);
+            parameters.Add("zip5", zip);
+            string response = GetResponseInternal("/property", parameters);
+            PropertySearch.Root myDeserializedClass = JsonConvert.DeserializeObject<PropertySearch.Root>(response);
+            if (null == myDeserializedClass.data)
+                return "<NOT FOUND>";
+            return myDeserializedClass.data[0].corelogicPropertyId;
+        }
+
+        
+        
+        
+        
+        public PropertyInfo.Summary GetAVMValueInternal(string corelogic_property_id,string avm)
+        {
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            
+            
+            
+            string resource = $"/property/{corelogic_property_id}/avm/thv/{avm}";
+            string response = GetResponseInternal(resource, parameters);
+            PropertyInfo.Root myDeserializedClass = JsonConvert.DeserializeObject<PropertyInfo.Root>(response);
+            if (null == myDeserializedClass.address)
+                return null;
+            myDeserializedClass.summary.xml_source = response;
+            return myDeserializedClass.summary;
+        }
+
+
+
+        public string GetResponseInternal(string resource, Dictionary<string, string> keys)
+        {
+            
+            RestClient restClient = new RestClient("https:
+
+            
+            RestRequest restRequest = new RestRequest(resource, Method.GET);
+            foreach(KeyValuePair<string,string> kvp in keys)
+            {
+                restRequest.AddParameter(kvp.Key, kvp.Value);
+            }
+            
+            
+            restRequest.AddHeader("Authorization", _key);
+
+            
+            IRestResponse restResponse = restClient.Execute(restRequest);
+
+            
+            string response = restResponse.Content;
+            return response;
+        }
+
+       
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+}
+
+
+--- FILE: CoreLogicLib\Properties\AssemblyInfo.cs ---
+[assembly: AssemblyTitle("CoreLogic")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("CoreLogic")]
+[assembly: AssemblyCopyright("Copyright ©  2020")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+
+
+
+[assembly: ComVisible(false)]
+
+
+[assembly: Guid("c4494531-7a7e-4955-8787-f64bda6a7910")]
+
+
+
+
+
+
+
+
+
+
+
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
+
+--- FILE: CoreLogicLib\PropertyInfo.cs ---
+namespace CoreLogicLib
+{
+    
+
+    public class PropertyInfo
+    { 
+    public class Summary
+    {
+        public double estimatedValue { get; set; }
+        public double lowValue { get; set; }
+        public double highValue { get; set; }
+        public string processedDate { get; set; }
+        public double? forecastStandardDeviation { get; set; }
+        public string xml_source { get; set; }
+    }
+
+    public class SalesHistory
+    {
+        public string salePrice { get; set; }
+        public string recordingDate { get; set; }
+        public string saleDate { get; set; }
+        public string saleType { get; set; }
+        public object sellerName { get; set; }
+        public string firstMortgageAmount { get; set; }
+        public object firstMortgageType { get; set; }
+        public string secondMortgageAmount { get; set; }
+        public string priorSalePrice { get; set; }
+        public string priorRecordingDate { get; set; }
+        public string priorSaleDate { get; set; }
+        public string priorSaleType { get; set; }
+        public object priorSellerName { get; set; }
+        public string priorFirstMortgageAmount { get; set; }
+        public object priorFirstMortgageType { get; set; }
+    }
+
+    public class Location
+    {
+        public string apn { get; set; }
+        public string landUse { get; set; }
+        public object landUseCode { get; set; }
+        public string censusTract { get; set; }
+        public object township { get; set; }
+        public string absenteeOwner { get; set; }
+        public double latitude { get; set; }
+        public double longitude { get; set; }
+        public string standardLandUse { get; set; }
+        public string standardLandUseCode { get; set; }
+    }
+
+    public class Property
+    {
+        public string livingArea { get; set; }
+        public string totalRooms { get; set; }
+        public string bedrooms { get; set; }
+        public string fullBath { get; set; }
+        public string halfBath { get; set; }
+        public string totalBaths { get; set; }
+        public string pool { get; set; }
+        public string numberOfStories { get; set; }
+        public string lotArea { get; set; }
+        public string yearBuilt { get; set; }
+        public string effectiveYearBuilt { get; set; }
+        public string airConditioning { get; set; }
+        public string fireplace { get; set; }
+        public string parking { get; set; }
+    }
+
+    public class Tax
+    {
+        public string assessedValue { get; set; }
+        public string assessedYear { get; set; }
+        public string landValue { get; set; }
+        public string improvementValue { get; set; }
+    }
+
+    public class SubjectPropertyInformation
+    {
+        public SalesHistory salesHistory { get; set; }
+        public Location location { get; set; }
+        public Property property { get; set; }
+        public Tax tax { get; set; }
+    }
+
+    public class Comparable
+    {
+        public string address { get; set; }
+        public string city { get; set; }
+        public string state { get; set; }
+        public string county { get; set; }
+        public string zip { get; set; }
+        public double distance { get; set; }
+        public string owner { get; set; }
+        public object seller { get; set; }
+        public string apn { get; set; }
+        public double yearBuilt { get; set; }
+        public string censusTract { get; set; }
+        public string landUse { get; set; }
+        public string landUseCode { get; set; }
+        public double totalAssessedValue { get; set; }
+        public double livingArea { get; set; }
+        public double lotArea { get; set; }
+        public double stories { get; set; }
+        public double parking { get; set; }
+        public string pool { get; set; }
+        public double salePrice { get; set; }
+        public double saleDate { get; set; }
+        public double firstMortgageAmount { get; set; }
+        public double priorSalePrice { get; set; }
+        public double priorSaleDate { get; set; }
+        public double totalRooms { get; set; }
+        public double bedrooms { get; set; }
+        public double fullBaths { get; set; }
+        public double halfBaths { get; set; }
+        public string airConditioning { get; set; }
+        public double fireplace { get; set; }
+        public double latitude { get; set; }
+        public double longitude { get; set; }
+        public double recordingDate { get; set; }
+        public double priorRecordingDate { get; set; }
+    }
+
+    public class FEMADeclaration
+    {
+        public double areaCode { get; set; }
+        public string date { get; set; }
+    }
+
+    public class Link
+    {
+        public string rel { get; set; }
+        public string href { get; set; }
+        public object hreflang { get; set; }
+        public object media { get; set; }
+        public object title { get; set; }
+        public string type { get; set; }
+        public object deprecation { get; set; }
+    }
+
+    public class Root
+    {
+        public string corelogicPropertyId { get; set; }
+        public string compositePropertyId { get; set; }
+        public string address { get; set; }
+        public string city { get; set; }
+        public string state { get; set; }
+        public string zip { get; set; }
+        public string county { get; set; }
+        public string ownerName { get; set; }
+        public string model { get; set; }
+        public string avmOrderId { get; set; }
+        public Summary summary { get; set; }
+        public SubjectPropertyInformation subjectPropertyInformation { get; set; }
+        public List<Comparable> comparables { get; set; }
+        public FEMADeclaration FEMADeclaration { get; set; }
+        public List<Link> links { get; set; }
+    }
+
+}
+
+}
+
+
+--- FILE: CoreLogicLib\PropertySearch.cs ---
+namespace CoreLogicLib
+{
+    
+
+    public class PropertySearch
+    {
+        public class Link
+        {
+            public string rel { get; set; }
+            public string href { get; set; }
+            public object hreflang { get; set; }
+            public object media { get; set; }
+            public object title { get; set; }
+            public string type { get; set; }
+            public object deprecation { get; set; }
+        }
+
+        public class Datum
+        {
+            public string corelogicPropertyId { get; set; }
+            public string compositePropertyId { get; set; }
+            public string fipsCode { get; set; }
+            public string apn { get; set; }
+            public double latitude { get; set; }
+            public double longitude { get; set; }
+            public string universalParcelId { get; set; }
+            public string parcelNumber { get; set; }
+            public string parcelSequence { get; set; }
+            public string houseNumber { get; set; }
+            public object houseNumber2 { get; set; }
+            public object preDirection { get; set; }
+            public string streetName { get; set; }
+            public string streetSuffix { get; set; }
+            public object postDirection { get; set; }
+            public object unitNumber { get; set; }
+            public object houseNumberSuffix { get; set; }
+            public string city { get; set; }
+            public string county { get; set; }
+            public string zipcode { get; set; }
+            public string zip4 { get; set; }
+            public string state { get; set; }
+            public string carrierRoute { get; set; }
+            public string streetAddress { get; set; }
+            public List<Link> links { get; set; }
+        }
+
+        public class Link2
+        {
+            public string rel { get; set; }
+            public string href { get; set; }
+            public object hreflang { get; set; }
+            public object media { get; set; }
+            public object title { get; set; }
+            public string type { get; set; }
+            public object deprecation { get; set; }
+        }
+
+        public class Root
+        {
+            public int pageNumber { get; set; }
+            public int pageSize { get; set; }
+            public int totalRecords { get; set; }
+            public int totalPages { get; set; }
+            public List<Datum> data { get; set; }
+            public List<Link2> links { get; set; }
+        }
+    }
+}
+
+
+--- FILE: Analytics\CashflowEngine.cs ---
+namespace Analytics
+{
+    public class CashflowEngine
+    {
+
+        public static CashflowSet RunCashflows(Asset a,CashflowInputs pi)
+        {
+            Dictionary<DateTime, CashflowSingle> _flows = new Dictionary<DateTime, CashflowSingle>();
+            CashflowSet cfs = new CashflowSet();
+            
+
+            
+            
+            DateTime asOf = a.effective_date.SetDay(1);
+
+            DataTable flows = new DataTable();
+            flows.Columns.Add("month", typeof(int));
+            flows.Columns.Add("prepay", typeof(double));
+            flows.Columns.Add("default", typeof(double));
+            flows.Columns.Add("recovery", typeof(double));
+            flows.Columns.Add("cashflow", typeof(double));
+
+            double total_cashflow = 0;
+
+            CashflowSingle prev = new CashflowSingle();
+            prev.month_num = 0;
+            prev.current_home_value = a.current_home_value;
+            prev.month = a.effective_date;
+            prev.remaining_bom_pct = 1.0;
+            prev.remaining_bom_inv_pmt = a.investment_payment;
+            prev.remaining_eom_pct = 1.0;
+            prev.remaining_eom_inv_pmt = a.investment_payment;
+            _flows.Add(prev.month,prev);
+
+
+            for (int month = 1; month != a.term_months+1; month++)
+            {
+                DataRow row = flows.Rows.Add();
+
+                CashflowSingle cf = new CashflowSingle();
+
+                cf.cpr = pi.cpr;
+                cf.cdr = pi.cdr;
+                cf.sev = pi.sev;
+                cf.hpi = pi.hpi;
+                DateTime cashflow_month = a.effective_date.AddMonths(month).SetDay(1);
+
+
+                cf.cpr_smm = 1.0 - (Math.Pow(1.0-cf.cpr/100.0, 1.0 / 12.0));
+                cf.cdr_smm = 1.0 - (Math.Pow(1.0 - cf.cdr / 100.0, 1.0 / 12.0));
+
+                if (month == a.term_months)
+                    cf.cpr_smm = 1;
+
+                cf.remaining_bom_pct = prev.remaining_eom_pct;
+                cf.remaining_after_default_pct = cf.remaining_bom_pct * (1.0 - cf.cdr_smm);
+                cf.remaining_eom_pct = cf.remaining_bom_pct * (1 - (cf.cpr_smm + cf.cdr_smm));
+
+
+                cf.current_home_value = Math.Pow(1.0 + cf.hpi, 1.0 / 12.0) * prev.current_home_value;
+                
+                int days = (cashflow_month-a.effective_date.Date).Days;
+                cf.maximum_unlock_share = a.cost_limit_basis * Math.Pow(1.0 + a.cost_limit, days / 365.0);
+      
+                double unlock_pct_bom = a.unlock_pct * cf.current_home_value;
+                cf.unlock_share_capped = Math.Min(unlock_pct_bom, cf.maximum_unlock_share);
+
+                cf.prepay_month = cf.cpr_smm * cf.unlock_share_capped * cf.remaining_after_default_pct;
+                cf.default_month = cf.cdr_smm * cf.unlock_share_capped * cf.remaining_bom_pct;
+                cf.recovery_month = cf.default_month * (1.0 - cf.sev /100.0);
+
+
+                cf.remaining_bom_inv_pmt = cf.remaining_bom_pct * a.investment_payment;
+                cf.remaining_eom_inv_pmt = cf.remaining_eom_pct * a.investment_payment;
+                cf.month_num = month;           
+                cf.total_contract_cash_month = cf.prepay_month + cf.recovery_month;
+                cf.month = cashflow_month;
+                cf.wal_calc = cf.remaining_bom_pct - cf.remaining_eom_pct;
+
+
+                row["month"] = month;
+                row["prepay"] = cf.prepay_month;
+                row["default"] = cf.default_month;
+                row["recovery"] = cf.recovery_month;
+                row["cashflow"] = cf.total_contract_cash_month;
+                total_cashflow += cf.total_contract_cash_month;
+                prev = cf;
+                _flows.Add(cf.month, cf);
+
+
+            }
+            double total_cash = _flows.Sum(n => n.Value.total_contract_cash_month);
+            
+            cfs.LoadFlows(_flows);
+            DataTable view = flows;
+            
+            return cfs;
+        }
+    }
+}
+
+
+--- FILE: Analytics\CashflowInputs.cs ---
+namespace Analytics
+{
+    public class CashflowInputs
+    {
+        public double cpr;
+        public double cdr;
+        public double sev;
+        public double hpi;
+        public void Populate(double cpr, double cdr, double sev, double hpi)
+        {
+            this.cpr = cpr;
+            this.cdr = cdr;
+            this.sev = sev;
+            this.hpi = hpi;
+        }
+    }
+
+}
+
+
+--- FILE: Analytics\CashflowSet.cs ---
+namespace Analytics
+{
+
+    public class CashflowSet
+    {
+
+        public Dictionary<DateTime, CashflowSingle> AllFlows { get { return _cashflows; } }
+
+        Dictionary<DateTime, CashflowSingle> _cashflows = new Dictionary<DateTime, CashflowSingle>();
+
+        private DateTime _earliest;
+        public double wal;
+
+        public void LoadFlows(Dictionary<DateTime, CashflowSingle> flows)
+        {
+            _cashflows = flows;
+            List<CashflowSingle> cf = flows.Values.ToList();
+            
+            this.wal = cf.WeightedAverage(n => System.Convert.ToDouble(n.month_num), n => n.wal_calc) / 12.0;
+        }
+        public void ReOrder()
+        {
+            _cashflows = _cashflows.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value);
+            
+        }
+        public CashflowSingle GetCashflowSingle(DateTime date)
+        {
+
+            if (_cashflows.ContainsKey(date))
+                return _cashflows[date];
+            var cf = new CashflowSingle { month = date };
+            _cashflows.Add(date,cf);
+            if (null == _earliest || _earliest < date)
+            {
+                _earliest = date;
+            }
+            return cf;
+        }
+
+        public override string ToString()
+        {
+            if (null != this._earliest)
+            {
+                double num = _cashflows[_earliest].num_contracts_orig;
+                return String.Format("[{0:M/d/yy}] - #{1}", this._earliest, num);
+            }
+            return "<no flows>";
+        }
+
+        public double total_contract_cashflow
+        {
+            get
+            {
+                return _cashflows.Sum(n => n.Value.total_contract_cash_month);
+            }
+        }
+
+    }
+}
+
+
+--- FILE: Analytics\CashflowSingle.cs ---
+namespace Analytics
+{
+    public class CashflowSingle : IObjectDumper
+    {
+        public int? month_num;
+        public DateTime month;
+        public double num_contracts_orig;
+        public double num_contracts_orig_single_month;
+        public double remaining_eom_pct;
+        public double remaining_after_default_pct;
+        public double current_home_value;
+        public double unlock_share_capped;
+
+        public double remaining_bom_pct;
+        public double default_month_pct;
+        public double prepay_month_pct;
+        public double default_month;
+        public double prepay_month;
+        public double turnover_month_pct;
+        public double unlock_share_bom;
+        public double unlock_share_eom;
+
+        public double unlock_share_bom_orig;
+        public double unlock_share_eom_orig;
+
+
+        public double maximum_unlock_share;
+
+        public double remaining_eom_scaled;
+        public double remaining_bom_scaled;
+        public double remaining_bom_inv_pmt;
+        public double remaining_eom_inv_pmt;
+
+        public double defaulted_unlock_share;
+        public double prepay_unlock_share;
+        public double recovery_month;
+
+        public double cpr;
+        public double cpr_smm;
+        public double cdr;
+        public double cdr_smm;
+        public double sev;
+        public double hpi;
+
+        public double inv_cashflow_aum;
+
+        public double avg_life_calc;
+        public double avg_life_calc_dollars;
+       
+
+        public double invested_dollars;
+
+        public double exchange_rate;
+        public double total_contract_cash_month;
+        public double wal_calc;
+        public double turnover_single_month_pct;
+
+
+        public override string ToString()
+        {
+            return String.Format("[{0:M/d/yyyy}] - {2} - BOM %:{1}", this.month, this.remaining_eom_pct, num_contracts_orig);
+        }
+
+        public void DoCalcs()
+        {
+            
+            
+
+            
+            
+
+
+
+            
+            
+
+            
+            
+
+            
+            
+
+            
+            
+
+            
+            
+
+            
+
+            
+
+            
+
+        }
+        public T GetAttribute<T>(string attribute) where T : class
+        {
+            switch (attribute.ToLower())
+            {
+                case "month_num":
+                    return month_num as T;
+                case "date":
+                    return month as T;
+                case "num_contracts_orig":
+                    return num_contracts_orig as T;
+                case "remaining_eom_pct":
+                    return remaining_eom_pct as T;
+                case "remaining_after_default_pct":
+                    return remaining_after_default_pct as T;
+                case "default_single_month_pct":
+                    return default_month as T;
+                case "prepay_single_month_pct":
+                    return prepay_month as T;
+                case "turnover_single_month_pct":
+                    return turnover_single_month_pct as T;
+
+                case "remaining_eom_scaled":
+                    return remaining_eom_scaled as T;
+ 
+                case "num_contracts_orig_single_month":
+                    return num_contracts_orig_single_month as T;
+
+                case "inv_cashflow_aum":
+                    return inv_cashflow_aum as T;
+                case "total_contract_cash_month":
+                    return total_contract_cash_month as T;
+
+            }
+
+            return null;
+        }
+    }
+
+}
+
+
+--- FILE: Analytics\InvestorCashflowSingle.cs ---
+namespace Analytics
+{
+    public class InvestorCashflowSingle : CashflowSingle
+    {
+        public double gross_cashflow;
+        public double acquisition_cost;
+        public CashflowSingle single;
+        public InvestorCashflowSingle(CashflowSingle cf) : base()
+        {
+            single = cf;
+        }
+    }
+}
+
+
+--- FILE: Analytics\NPV.cs ---
+namespace Analytics
+{
+    public static class NPV
+    { 
+        public static double BXIRR(double[] cashflows, DateTime[] dates, UtilsLib.Dates.DayCount dc)
+        {
+            if (cashflows.Length != dates.Length)
+                return -9999999999;
+
+
+
+            int max_runs = 150000;
+            double precision = .01;
+            double step_orig = .001;
+            double step = step_orig;
+            double high_level_precision = 1000;
+            double price_paid = -cashflows[0];
+
+            double last_yield = 0.01;
+            Nullable<double> last_npv;
+            for (int i = 0; i != max_runs; i++)
+            {
+                double npv = BXNPV(last_yield, cashflows, dates, dc);
+                double delta = npv;
+                if (-precision < delta && delta < precision)
+                    
+                    return last_yield;
+
+                if (-high_level_precision < delta && delta < high_level_precision)
+                {
+                    step_orig = .0001;
+                }
+
+
+                if (delta > 0)
+                    last_yield = last_yield * (1 + step_orig);
+                else
+                    last_yield = last_yield * (1 - step_orig);
+                
+                
+                
+                
+                
+                
+                
+                
+
+            }
+            return -9999999999999999;
+        }
+
+        public static double BXNPV(double discount_rate, double[] cashflows, DateTime[] dates, UtilsLib.Dates.DayCount dc)
+        {
+            if (discount_rate < 1)
+                discount_rate = discount_rate * 100;
+            Nullable<DateTime> previous_date = null;
+            Nullable<DateTime> settle_date = null;
+            Nullable<double> discount_factor = 0;
+            
+            double discount_factor_new = 1;
+            double discount_factor_new_prev = 1;
+            double total_npv = 0;
+            for (int i = 0; i != cashflows.Length; i++)
+            {
+                double cashflow = cashflows[i];
+                
+                DateTime date = dates[i];
+                if (i == 0)
+                {
+                    previous_date = dates[0];
+                    discount_factor = 1;
+                    settle_date = dates[0];
+                    total_npv += cashflow;
+                    continue;
+                }
+                double days_since = (date - previous_date.Value).TotalDays;
+                double period_time_change = days_since / 360.0;
+                double time_in_years = UtilsLib.Dates.Yearfrac(previous_date.Value, date, dc);
+                discount_factor = discount_factor_new_prev / (1 + ((days_since) / (360.0) * (discount_rate / 100.0)));
+                discount_factor = discount_factor_new_prev / (1 + (time_in_years * (discount_rate / 100.0)));
+                
+
+
+                
+                double npv = discount_factor.Value * cashflow;
+                total_npv += npv;
+                previous_date = date;
+                discount_factor_new_prev = discount_factor.Value;
+            }
+            return total_npv;
+        }
+
+
+
+        
+    }
+}
+
+
+--- FILE: Analytics\PricingEngine.cs ---
+namespace Analytics
+{
+    public class PricingEngine
+    {
+
+        public delegate void PricingOutputDelegate(PricingOutput po);
+        public delegate void SetEtaIncrementer(int? work_done);
+
+        PricingOutputDelegate _pod;
+        SetEtaIncrementer _pei;
+
+
+        public void SetInputs(PricingOutputDelegate pod, CashflowSet cfs, PricingInput pi)
+        {
+            _pod = pod;
+            _cfs = cfs;
+            _pi = pi; ;
+        }
+
+        public string asset_id;
+
+        public void SetEtaIncrementerFunction(SetEtaIncrementer pei)
+        {
+            _pei = pei;
+        }
+        
+        CashflowSet _cfs;
+        PricingInput _pi;
+
+        public void DoSingleCashflowThreadPool(object extra)
+        {
+            Price(_cfs, _pi);
+        }
+        public async Task<PricingOutput> Price()
+        {
+            return Price(_cfs, _pi);
+        }
+        PricingOutput po;
+        public PricingOutput Price(CashflowSet cfs, PricingInput pi)
+        {
+            PricingOutput po = new PricingOutput();
+            po.price_time = DateTime.Now;
+            po.cfs = cfs;
+
+            foreach (var cf in cfs.AllFlows)
+            {
+                InvestorCashflowSingle icfs = new InvestorCashflowSingle(cf.Value);
+                icfs.month = cf.Value.month;
+                icfs.month_num = cf.Value.month_num;
+                if (pi.settle_date.SameMonth(cf.Key))
+                {
+                    icfs.acquisition_cost = -(cf.Value.remaining_bom_inv_pmt * pi.price);
+                }
+                icfs.gross_cashflow = cf.Value.total_contract_cash_month + icfs.acquisition_cost;
+                po.investor_cashflow.Add(icfs.month, icfs);
+                po.investor_gross_net_cash += icfs.gross_cashflow;
+                po.dates.Add(icfs.month);
+                po.investor_cashflows.Add(icfs.gross_cashflow);
+            }
+
+            var cashFlows = po.investor_cashflow.Select(n => new XIRRCalculator.CashFlowDates() { Amount = n.Value.gross_cashflow, Date = n.Key }).ToList();
+            var xirr = XIRRCalculator.XIRR(cashFlows, 6);
+            po.investor_gross_yield = xirr;
+
+            if (null != _pod)
+                _pod(po);
+            if (null != _pei)
+                _pei(null);
+            return po;
+        }
+
+        public void WriteOutput()
+        {
+            if (null != _pod)
+                _pod(po);
+        }
+    }
+}
+
+
+--- FILE: Analytics\PricingInputs.cs ---
+namespace Analytics
+{
+    public class PricingInput
+    {
+        public double price;
+        public DateTime settle_date;
+
+
+        public void Populate(DateTime settle_date, double price)
+        {
+            this.price = price;
+            this.settle_date = settle_date;
+        }
+    }
+
+}
+
+
+--- FILE: Analytics\PricingOutput.cs ---
+namespace Analytics
+{
+
+
+    public class PricingOutput
+    {
+        
+        public CashflowSet cfs;
+        public Dictionary<DateTime, InvestorCashflowSingle> investor_cashflow = new Dictionary<DateTime, InvestorCashflowSingle>();
+        public double? investor_gross_yield;
+        public double investor_gross_net_cash;
+        public List<double> investor_cashflows = new List<double>();
+        public List<DateTime> dates = new List<DateTime>();
+        public DateTime price_time;
+    }
+}
+
+
+--- FILE: Analytics\Properties\AssemblyInfo.cs ---
+[assembly: AssemblyTitle("Analytics")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("Analytics")]
+[assembly: AssemblyCopyright("Copyright ©  2020")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+
+
+
+[assembly: ComVisible(false)]
+
+
+[assembly: Guid("1476bccc-0164-4a18-b074-c4158250c4f4")]
+
+
+
+
+
+
+
+
+
+
+
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
+
+--- FILE: Analytics\Utils.cs ---
+namespace Analytics
+{
+    public class Utils
+    {
+
+        public static CashflowSet CombineCashflows(IEnumerable<CashflowSet> sets)
+        {
+            CashflowSet cfs = new CashflowSet();
+            foreach (CashflowSet set in sets)
+            {
+                foreach (KeyValuePair<DateTime, CashflowSingle> single in set.AllFlows)
+                {
+                    CashflowSingle ms = cfs.GetCashflowSingle(single.Key);
+                    CashflowSingle s = single.Value;
+
+                    ms.num_contracts_orig += s.num_contracts_orig;
+                    ms.remaining_bom_pct += s.remaining_bom_pct;
+                    ms.remaining_after_default_pct += s.remaining_after_default_pct;
+
+                    ms.prepay_month_pct += s.prepay_month_pct;
+                    ms.default_month_pct += s.default_month_pct;
+
+                    ms.remaining_eom_pct += s.remaining_eom_pct;
+                    ms.turnover_single_month_pct += s.turnover_single_month_pct;
+
+                    ms.remaining_bom_scaled += s.remaining_bom_scaled;
+
+                    
+                    
+
+                    
+
+                    ms.remaining_eom_scaled += s.remaining_eom_scaled;
+                    
+                    ms.num_contracts_orig_single_month += s.num_contracts_orig_single_month;
+
+                    ms.unlock_share_bom += s.unlock_share_bom;
+                    ms.unlock_share_eom += s.unlock_share_eom;
+
+                    
+                    
+
+                    ms.unlock_share_bom_orig += s.unlock_share_bom_orig;
+                    ms.unlock_share_eom_orig += s.unlock_share_eom_orig;
+
+                    
+                    
+
+                    
+                    
+
+                    ms.recovery_month += s.recovery_month;
+                    
+
+                    ms.inv_cashflow_aum += s.inv_cashflow_aum;
+                    
+
+                    ms.avg_life_calc += s.avg_life_calc;
+                    ms.avg_life_calc_dollars += s.avg_life_calc_dollars;
+
+                    
+                    
+
+
+                    
+                    
+                    
+                    
+
+                    
+                    
+                }
+
+            }
+
+            int start_month = 0;
+            cfs.ReOrder();
+            foreach (var c in cfs.AllFlows)
+            {
+                
+                
+                
+            }
+            return cfs;
+        }
+    }
+}
+
+
+--- FILE: Analytics\XIRRCalculator.cs ---
+namespace Analytics
+{
+    public class XIRRCalculator
+    {
+
+
+
+        public XIRRCalculator(double lowRate, double highRate, List<CashFlowDates> cashFlow)
+        {
+            var cashFlowYears = ToFractionOfYears(cashFlow);
+            Initialize(lowRate, highRate, cashFlowYears);
+
+        }
+        private XIRRCalculator(double lowRate, double highRate, List<CashFlowFractionOfYear> cashFlow)
+        {
+            Initialize(lowRate, highRate, cashFlow);
+        }
+        private void Initialize(double lowRate, double highRate, List<CashFlowFractionOfYear> cashFlow)
+        {
+            LowRate = lowRate;
+            HighRate = highRate;
+            CashFlow = cashFlow;
+            LowResult = CalcEquation(CashFlow, LowRate);
+            HighResult = CalcEquation(CashFlow, HighRate);
+        }
+        private double LowRate { get; set; }
+        private double HighRate { get; set; }
+        private double LowResult { get; set; }
+        private double HighResult { get; set; }
+        private List<CashFlowFractionOfYear> CashFlow { get; set; }
+
+        private double CalcEquation(List<CashFlowFractionOfYear> cashflows, double interestRate)
+        {
+            return cashflows.Select(x => (x.Amount / (Math.Pow((1 + interestRate), x.Years)))).Sum(x => x);
+        }
+        private static List<CashFlowFractionOfYear> ToFractionOfYears(List<CashFlowDates> cashflows)
+        {
+            var firstDate = cashflows.Min(x => x.Date);
+            return cashflows
+                .Select(x => new CashFlowFractionOfYear(x.Amount, ((double)x.Date.Subtract(firstDate).Days) / 365))
+                .ToList();
+        }
+
+        public double? Calculate(double precision, int decimals)
+        {
+            if (Math.Sign(LowResult) == Math.Sign(HighResult))
+            {
+                return null;
+                
+            }
+
+            var middleRate = (LowRate + HighRate) / 2;
+            var middleResult = CalcEquation(CashFlow, middleRate);
+            if (Math.Sign(middleResult) == Math.Sign(LowResult))
+            {
+                LowRate = middleRate;
+                LowResult = middleResult;
+            }
+            else
+            {
+                HighRate = middleRate;
+                HighResult = middleResult;
+            }
+            if (Math.Abs(middleResult) > precision)
+            {
+                return Calculate(precision, decimals);
+            }
+            else
+            {
+                return Math.Round((HighRate + LowRate) / 2, decimals);
+            }
+
+        }
+
+        public class CashFlowFractionOfYear
+        {
+            public CashFlowFractionOfYear(double Amount, double Years)
+            {
+                this.Amount = Amount;
+                this.Years = Years;
+            }
+            public double Amount;
+            public double Years;
+        }
+
+        public class CashFlowDates
+        {
+            public double Amount { get; set; }
+
+            public DateTime Date { get; set; }
+        }
+
+
+        public static double? XIRR(DataTable flows,string date_col,string flow_col)
+        {
+            double? result = null;
+            try
+            {
+                List<CashFlowDates> all_flows = new List<CashFlowDates>();
+                foreach (DataRow row in flows.Select().Where(n => DBNull.Value != n[flow_col]))
+                {
+                    CashFlowDates d = new CashFlowDates();
+                    d.Date = System.Convert.ToDateTime(row[date_col]);
+                    d.Amount = System.Convert.ToDouble(row[flow_col]);
+                    all_flows.Add(d);
+                }
+                if (all_flows.Count <= 1)
+                    return null;
+                result=XIRR(all_flows);
+            }
+            catch { }
+            finally
+            {
+ 
+            }
+            return result;
+        }
+        public static double? XIRR(List<CashFlowDates> cashflows, int decimals = 4, double maxRate = 1000000)
+
+        {
+
+            if (cashflows.Where(x => x.Amount > 0).Count() == 0)
+
+            {
+
+
+
+            }
+
+            if (cashflows.Where(x => x.Amount < 0).Count() == 0)
+
+            {
+
+
+            }
+
+
+
+            var precision = Math.Pow(10, -decimals);
+
+            var minRate = -(1 - precision);
+
+            return (new XIRRCalculator(minRate, maxRate, cashflows).Calculate(precision, decimals));
+
+        }
+
+
+    }
+}

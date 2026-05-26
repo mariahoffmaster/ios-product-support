@@ -1,0 +1,136 @@
+=== BADGER KB: LOGIC — WIRES AND BANKING ===
+Responsible Department: Investment Operations
+Last Updated: May 2026
+============================================================
+
+OVERVIEW
+--------
+Investment Operations is responsible for setting up and approving outbound wires from
+Texas Capital Bank (TCB) accounts. This covers non-template wires (ad hoc requests from
+Jagat Shah or others), bulk wire processing for CET disbursements, and margin call transfers.
+All wires require dual approval before release. The deadline for wire approvals is 1:30 PM EST.
+
+
+KEY ACCOUNTS
+------------
+- UF2 Funding Account — TCB x3836. Primary funding account; wires to title companies go out here.
+- UF2 Collections Account — TCB x3844. Receives incoming settlement wires and fund returns.
+- UPS Balance Sheet Account — JPMorgan Chase x0292. Unlock's own funds; source of haircut.
+- UAM Account at TCB — Used for overpayment/fee sweeps.
+- UAM x0398 — Originator name for non-template wires. Referenced in wire instructions as
+  "Originator Name: UAM x0398".
+
+
+KEY WIRE APPROVERS
+------------------
+- Finance: Kevin Nerney, Brian Kay
+- Investment Ops: Jagat Shah, Ryan Thrift
+Wires require one approver from each group. Deadline: 1:30 PM EST.
+Escalate to Jagat Shah if not approved by 1:00 PM EST.
+
+
+SETTING UP NON-TEMPLATE WIRES OUT OF TCB
+-----------------------------------------
+Non-template wires are ad hoc wires not covered by a saved template. These are typically
+requested by Jagat Shah and include FFC (For Further Credit) instructions.
+
+Steps:
+1. Receive wire request from Jagat. Request will include:
+   - Recipient account details
+   - Amount
+   - FFC (For Further Credit) data — included in the notes/comment field of the wire
+   - Instructions for WSFS if applicable
+2. Log into TCB portal (securelogin.texascapitalbank.com).
+3. Go to Money Movement → ACH/Wire Transfers.
+4. Set up the wire manually (no template). Originator Name = UAM x0398.
+5. Include FFC data in the wire notes/comment field.
+6. When sending wires to Collections account, refer to the template to confirm account details,
+   but send from the actual account Jagat specifies in the request.
+7. After wire is set up, post confirmation to the appropriate Slack channel with:
+   - Originator Name
+   - Account
+   (Format per standard wire confirmation message.)
+
+
+CET DISBURSEMENTS / BULK WIRE PROCESSING
+-----------------------------------------
+Overview: ClearEdge Title (CET) sends bulk wire/disbursement files on a regular basis
+(typically from Travon Dixon at CET). These must be parsed, loaded into the UAM database,
+and then a Bank Transfer and Map step confirms and records the transactions.
+
+Prerequisite: Log into Badger before starting to validate credentials upfront.
+
+Steps:
+1. Save the files sent from CET into both:
+   - WireReportImport folder:
+     C:\Users\%username%\...\01 - Surveillance\ClearEdge\ClearEdgeWireReports\WireReportImport
+   - Corresponding monthly Archive folder.
+
+2. After quick visual review, CLOSE the bulk wire/disbursements files. If left open, the
+   BAT button step will break.
+
+3. Open the CET Wire Report Template:
+   C:\Users\%username%\...\01 - Surveillance\ClearEdge\CETWireReportTemplate.xlsx
+
+4. Click the BAT Button on the template. This initiates the batch process:
+   - A command window appears.
+   - You are prompted to log into Badger again (do it promptly — it disappears if too slow).
+   - Files disappear from the main WireReportImport folder.
+   - Slack notifications appear in #badger_growls: "Funds disbursed for Asset ID [id] @[name]"
+
+5. After files are cleared, click the Bank Transfer Button.
+   - Confirm total and count match the Amounts tab on the Bulk Wire report.
+   - Clear out any duplicates. Duplicates are caused by matching amounts and indicated by
+     conditional formatting. Compare Description fields (State/Name) to Escrow account
+     State/Name; remove non-matches.
+
+6. Click the Map Button.
+   - Adds transaction mappings to the database.
+   - Sends confirmation email with the produced report.
+
+Optional Verification Queries:
+  -- Locate load_id for a specific bulk wire file
+  SELECT * FROM ClearEdgeLoads WHERE [file_name] LIKE '%Unlock Bulk Wire 05-5-2026%'
+
+  -- Confirm record count for a load_id
+  SELECT * FROM ClearEdgeWireReports WHERE load_id = [load_id]
+
+
+KEY TABLES
+----------
+- ClearEdgeLoads — One record per CET bulk wire file loaded. Contains file_name and load_id.
+- ClearEdgeWireReports — Individual wire records per load. Linked to ClearEdgeLoads by load_id.
+
+
+UPDATE MAX STATUS FOR RELEASED WIRES
+--------------------------------------
+After wires have been released to title companies, update the MAX sub-stage for each asset.
+
+Steps:
+1. Open asset in MAX:
+   https://max.unlock.com/ops/applications/[asset_id]/deal-summary
+2. Change "Current Sub Stage" from "Pending Escrow Disbursement" to "Recording".
+3. The asset will now show Current Sub Stage as "Pending Recording".
+
+Note: This step is typically automated via the MAX Button in BulkFunding Template during
+normal daily funding. Manual update is needed for exception cases.
+
+
+WIRE APPROVAL MESSAGE FORMAT (#cash_management)
+-------------------------------------------------
+Standard message format for requesting dual wire approvals in #cash_management:
+
+  @Jagat Shah @Kevin Nerney @Brian Kay — Funding approval's for today out of UF2 TCB:
+  Value Date [date]
+  CET
+  Asset Count           [N]
+  Investment Payment    $[amount]
+  First American
+  Asset Count           [N]
+  Investment Payment    $[amount]
+  Total Asset Count:    [N]
+  Total Investment Payments: $[total]
+  The wires are ready for your approval in TCB BankNow
+  [Omni link]
+
+Deadline: 1:30 PM EST. Escalate to Jagat if not approved by 1:00 PM.

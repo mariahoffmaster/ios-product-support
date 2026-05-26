@@ -1,0 +1,354 @@
+=== BADGER KB: LOGIC — TRADES AND INVESTOR SALES ===
+Responsible Department: Investment Operations / Capital Markets
+Last Updated: May 2026
+============================================================
+
+OVERVIEW
+--------
+After HEAs are originated, Unlock sells them to investors. This process is called "papering
+a trade." Trades involve proposing a set of assets to an investor at an agreed price, executing
+trade documents, receiving proceeds, and transferring collateral to the investor's custodian.
+Key investors include Saluda Grade (SGALT B, SGLT-8), D2 (UNSO FUNDING TRUST I), LibreMax
+(LEX 1, LEX 2), Canyon, and various securitization trusts (UNLOK 2022-1 through 2025-3).
+
+
+KEY ACCOUNTS / INVESTORS
+--------------------------
+- UPS — Unlock balance sheet account (JPMorgan Chase). Originating entity for all trades.
+- UF2 — TCB warehouse line account. Trade proceeds for UF2-funded assets go here.
+- SGALT B / SGLT-8 — Saluda Grade investor accounts.
+- D2 — UNSO FUNDING TRUST I. D2 Capital investor.
+- LEX 1 / LEX 2 — LibreMax investor accounts (UNLOCK LEX RESIDENTIAL INVESTMENTS TRUST
+  2022-1 and 2022-2).
+- Canyon — Another investor account.
+- UNLOK 2022-1, 2023-1, 2024-1, 2024-2, 2025-1, 2025-2 — Securitization trusts.
+- SGOF — MSR Purchaser Account. Receives excess servicing fees post-remittance.
+
+
+KEY SYSTEMS AND TOOLS
+---------------------
+- Trades Setup Template — A:\05 - Initiatives\Trades\Trades Setup Template.xlsx
+  Contains: Available Collateral tab, Forward Sale Data Schedule, Historic Trades tab.
+- Strats Template.xlsb — C:\Users\[Name]\...\05 - Initiatives\Strats\Strats Template.xlsb
+  Used to generate Strats PDFs and tapes. "Single Guitar" button runs report generation.
+- New Tape Format v8.sql — A:\00 - Operations\Scripts\New Tape Format v8.sql
+  Used to generate position tapes for trades. Key parameters: @accounts, @blank_trade,
+  @blank_price, @trade_sd, @trade_td, @include_zero_positions.
+- ReportRunner — A:\03 - Applications\ReportRunner. Generates WSFSCustodyToday tape.
+- Maxwell — Third-party diligence firm (himaxwell.com). Grades a 20% sample of trade assets.
+  SFTP: himaxwell.files.com → path: \MaxDiligence\DueDiligence\[Investor]\Unlock\
+- Omni / Sigma — Dashboard and reporting tools for trade data.
+- DocuSign — Used for Bill of Sale, Forward Sale Data Schedule, Collateral Release form.
+
+
+KEY TABLES AND VIEWS
+---------------------
+- dbo.Trades — Core trade journal entries. Fields: asset_id, oface, account_id, buy_sell,
+  counterparty_id, trade_date, settle_date, price.
+- dbo.vTradesEx — Extended trade view. Key fields: trade_id, trade_date, settle_date, account,
+  counterparty, oface, investment_payment, net_proceeds, exchange_rate, cost_limit,
+  credit_score, lien_position, property_type, buy_sell, is_flow_investor,
+  is_securitization_account_counterparty, is_unlock_buyback_acct.
+- dbo.vAssetsEx — Asset data view. Joined to vTradesEx on asset_id.
+- dbo.Maxwell_Diligence_Asset_Map — Maps assets to Maxwell diligence submissions.
+  Fields: asset_id, Diligence_Name.
+
+
+KEY TERMINOLOGY
+---------------
+- oface — Original face value (= investment_payment at origination).
+- investment_payment — Amount Unlock paid for the HEA.
+- net_proceeds — Amount received from investor on settlement (after price adjustment).
+- exchange_rate — The trade price / exchange rate agreed with investor.
+- base_price — Starting price before adjustment. Base Exchange (NOT Exchange Rate) should
+  be rounded DOWN to nearest tenth (2.05 → 2.00, 2.15 → 2.10).
+- cost_limit — The investor's cost limit on the asset.
+- lien_position — Position of the HEA lien (1st, 2nd, 3rd, etc.).
+- buy_sell — 'B' for buy (Unlock buying back), 'S' for sell (Unlock selling to investor).
+- account — The investor account the asset is in (e.g., 'UPS', 'SGALT B', 'D2').
+- counterparty — The investor counterparty on the trade (e.g., 'SGALT B', 'SGLT-8', 'UF2').
+- trade_date (T) — Date the trade is agreed upon.
+- settle_date (S) — Date the trade financially settles (typically T+2 or T+4 business days).
+- GOS — Gain on Sale. The profit from a trade = purchase_proceeds - oface.
+- Available Collateral — Assets eligible to trade: must be Certified (custodian has
+  verified the electronic package) AND Disbursed (CET has disbursed funds to consumer).
+- Strats — Statistical stratifications report showing portfolio composition (FICO, LTV, etc.)
+  generated as PDF and Excel. Used for investor reporting and trade proposals.
+- Tape — Asset-level data export in Excel. Sent to investors for trade proposals and to
+  custodians for certification.
+- uw_issue — Underwriting issue flag on an asset. Check before including in a trade:
+  =Badger.Get(B20,"uw_issue")
+- is_flow_investor — Flag indicating asset is held by a flow investor (not a securitization).
+- WAVG — Weighted average metrics (credit score, CLTV, ACL) calculated from Strats.
+- CPR — Conditional Prepayment Rate. Measures prepayment speed.
+- CDR — Conditional Default Rate. Measures default rate based on auction completions.
+- 3M CPR / CDR — Trailing 3-month rates.
+- LTD CPR — 24-month CPR (used as Life-to-Date proxy).
+- LTD CDR — Life-to-Date CDR from trust start date.
+
+
+INVESTOR SALE FLOW OF FUNDS
+-----------------------------
+Trade Date (T): Assets, price, trade date, and settle date are agreed upon with investor.
+  In Modern Treasury: assets are marked with trade_id; expected payments are set up for
+  settle date proceeds split by funding source (UPS vs. UF2).
+
+Settle Date (S):
+  1. Investor wires proceeds per split to UPS/UF2:
+     - Proceeds for UPS-funded assets → wire to UPS JPM account.
+     - Proceeds for UF2-funded assets → wire to UF2 TCB account.
+  2. GOS (Gain on Sale) proceeds remitted from UF2 to UPS.
+     Modern Treasury: expected payments reconciled; automatic GOS sweep initiated when
+     UF2 funds received. Excess (GOS + haircut) swept to UPS.
+  3. For assets funded via warehouse facility: 90% advance (Advance) pays down UF2 account.
+
+Example (122 assets, trade price 104):
+  Proceeds for UPS assets:  $1,804,865.92 → JPM UPS
+  Proceeds for UF2 assets:  $8,863,634.00 → TCB UF2
+  UF2 Advance repaid:       $7,670,452.50 (pays down warehouse line)
+  Excess (GOS + Haircut):   $340,909.00 swept to UPS
+
+
+PAPERING A TRADE — STEP-BY-STEP
+---------------------------------
+Step 1: Determine Available Collateral
+  Open Trades Setup Template → Available Collateral tab.
+  Click "Get Available Collateral" button. Assets must be:
+    (a) Certified — electronic package verified by document custodian (WSFS).
+    (b) Disbursed — CET has disbursed funds to consumer.
+
+Step 2: Build Trade Population
+  Open Forward Sale Data Schedule (copy from previous trade, update date).
+  - Exclude assets in "Assets in Timeouts" section.
+  - Click Money Maker to retrieve population.
+  - Send proposed trade to investor (e.g., Saluda Grade email to Ben Haltmaier).
+  - Copy down Base Price.
+  - Adjust Base Exchange to round down to nearest tenth.
+    Formula: =IF(ISODD(H20/0.05),H20-0.05,H20) then copy values back.
+  - Run uw_issue check on all assets: =Badger.Get(B20,"uw_issue")
+  - Fix all Pre-Execution Exceptions.
+
+Step 3: Generate Tape
+  Run New Tape Format v8.sql with appropriate parameters:
+    SET @cutoff = '[settle_date]'
+    declare @accounts dbo.IntList
+    insert into @accounts (item) values ([account_number])
+  Copy output to Excel. Remove first four columns (Account, Trade Id, Trade Date, Settle Date).
+  Copy formats from previous tapes. Update Current Credit Score from Original where missing.
+  Email proposed tape to investor.
+
+Step 4: Request WSFS Certification
+  Copy asset IDs into Badger search screen. Select all → right click → Admin Tasks →
+  Request WSFS Certification.
+  Save file as: wsfs_trade_tape_MM_DD_YYYY_Trade_[id].xlsx
+  Save to: A:\00 - Operations\Document Custody\wsfs
+  Send certification request email to WSFS.
+
+Step 5: Generate Schedule and Strats
+  From Schedule tab in Trades Setup Template: Run for A and then I (Spawn = Yes).
+  Click "Do All" → SGALT Button (run in debug, skip strats).
+  Remove notices@saludagrade.com from cc list before sending email.
+
+Step 6: Insert Trades
+  Click Insert Trade button in Trades Setup Template.
+  Click Tape Icon button to generate old-format tape (required by some investors on trade date).
+
+Step 7: DocuSign
+  Location: Shared Folders\AssetManagement\[Investor]\[Investor] - Trade Package
+  - Add newly generated documents (Bill of Sale, Forward Sale Data Schedule).
+  - Collateral Release form completed in DocuSign package, split from other docs.
+  - Send signed trade package to investor.
+
+Step 8: On Settle Date — Run WSFS Custody Transfer
+  Run WSFSCustodyToday.bat from ReportRunner.
+  Send collateral release email to WSFS AFTER funds have been released.
+  Email to WSFS: request for collateral transfer with relevant trade number.
+
+Step 9: Create Position Tapes (3 total)
+  Run New Tape Format v8.sql with @trade_sd=1, @include_zero_positions=1.
+  Parameters for position tape:
+    declare @blank_trade bit = 0
+    declare @blank_price bit = 0
+    declare @trade_sd bit = 1
+    declare @trade_td bit = 0
+  Tapes needed:
+    1. Original position tape
+    2. New positions with settle
+    3. All-inclusive position on full portfolio
+
+
+MAXWELL DILIGENCE PROCESS
+---------------------------
+Overview: Maxwell is a third-party diligence firm that grades a 20% sample of trade assets.
+Runs for investors: Saluda Grade, D2, Canyon.
+
+Step 1: Identify trades needing diligence.
+  Run query against vTrades. Records where Diligence_Name IS NULL still need to be worked on.
+  Typically select the lowest 3 trade IDs for the target investor.
+
+Step 2: For each trade, in Badger → Asset Search by Trade ID → enter trade_id → Get.
+  Verify record count matches Trade_Asset_Count from query.
+  Select all → right click → Admin Tasks → Generate Maxwell Data File.
+  Save to: A:\01 - Surveillance\Maxwell\[INVESTOR_DATE folder]\[Trade_ID].xlsb
+
+Step 3: Email Maxwell the files, request 20% sample selection.
+  To: Lynette Nagy (lynette.nagy@himaxwell.com); CC: Jim Smith (jim.smith@himaxwell.com)
+
+Step 4: After Maxwell returns sample, copy asset IDs to text file. Verify count = 20%.
+  Enter full asset_id list in Badger Search tab → Enter.
+  Verify row count matches 20% count.
+  NOTE: Delete C:\BadgerData folder if it exists before next step.
+
+Step 5: Select all in results → Admin Tasks → Download All PDFs from Max and Merge.
+  Exports to C:\BadgerData\PDF\ in separate asset folders.
+
+Step 6: Upload to Maxwell SFTP: himaxwell.files.com
+  Path: \MaxDiligence\DueDiligence\[Investor]\Unlock\[dated folder]
+  Drag in ONLY the exported folders from C:\BadgerData\PDF\
+  (Not the individual PDF files — upload the folders.)
+
+Step 7: Notify Maxwell via email and Slack (#maxwell_unlock_diligence).
+  Post asset ID sample list to #diligence_war_room.
+
+Step 8: Download Results (after Maxwell grades the sample).
+  In Badger → open any HEA → Surveillance tab → Maxwell Diligence Sample.
+  Click Add Diligence Sample and Add Assets To Sample.
+  At maxwell.lauramac.io: Run "Rating Grades Agency Detail Report" from Loan Reports.
+  Download and save to A:\01 - Surveillance\Maxwell\export
+  Run: A:\03 - Applications\DBLoader\maxwell.bat (sends grade report email).
+  Open Maxwell_Report_Master.xlsx → Click Update Master → Highlight target record
+  → Detail Report button → Copy Sample_Detail tab → paste to #diligence_war_room.
+
+
+SALUDA MONTHLY TRADE STRATS
+------------------------------
+Frequency: Monthly. Provides Saluda with aggregate breakdown of prior month production.
+Outputs: All Trades Strats (PDF), Saluda-Only Strats (PDF), Non-Saluda Strats (PDF),
+WAVG Comparison Table (Excel), Tapes x3 (Excel).
+
+Step 1: Pull asset IDs for prior month trades.
+  DECLARE @asOf datetime = 'MM/01/YYYY'  -- First of prior month
+  DECLARE @asOfend datetime = eomonth(@asOf)
+  SELECT DISTINCT asset_id, counterparty, investment_payment
+  FROM vTradesEx
+  WHERE trade_date BETWEEN @asOf AND @asOfend
+    AND counterparty != 'UF2' AND account = 'UPS'
+  ORDER BY counterparty
+
+  Sanity check: run volume/count query grouped by counterparty.
+
+Step 2: Build three asset ID lists in Excel:
+  - All Trades (full output)
+  - Saluda-only (counterparty = 'SGALT B' or 'SGLT-8')
+  - Non-Saluda (exclude Saluda counterparties; remove buyback trades)
+  Save to: A:\04 - Investors\Saluda Grade\Month End Allocations\[Month folder]
+
+Step 3: Generate Strats reports using Strats Template.xlsb.
+  Run for bucket_investment_payment. Click Single Guitar button for each group.
+  Save PDFs: STRATS - [All/Saluda/Non Saluda] - ACTIVE + CLOSED - MM.DD.YYYY
+  Save tapes: TAPE - [All/Saluda/Non Saluda] - ACTIVE + CLOSED - MM.DD.YYYY
+
+Step 4: Create WAVG Comparison Table.
+  Copy prior month file, update date. Update all highlighted fields from Strats PDFs.
+  File: Strats_WAVG_Diffs MM.DD.YYYY.xlsx at A:\04 - Investors\Saluda Grade\Month End Allocations
+
+Step 5: Send email to Saluda.
+  To: ben.haltmaier@saludagrade.com, gregory.violante@saludagrade.com,
+      timothy.carr@saludagrade.com
+  CC: peter@unlock.com, zach.winslow@unlock.com, Jin.Im@unlock.com,
+      Jagat.Shah@unlock.com, brian.rubin@unlock.com, jehona.ahmeti@unlock.com
+  Subject: Saluda – [Month] Allocation Strats + WAVG Comparison
+
+
+D2 MONTHLY TRADE ALLOCATION SCHEDULE
+---------------------------------------
+Frequency: Monthly, 1st day of each month.
+Source: Omni Dashboard — Trade Allocation Overview.
+Files: Export trade summary by trade date as Excel and PDF.
+Clean up: Delete % total column from export.
+Delivery:
+  Email to: glinton@d2-am.com, jlee@d2-am.com, jhause@d2-am.com
+  CC: Jagat.Shah@unlock.com, peter@unlock.com, Jin.Im@unlock.com,
+      Brian.Rubin@unlock.com, jehona.ahmeti@unlock.com
+  Also post to #d2-investor-relations Slack channel.
+
+
+D2 WEEKLY PIPELINE REPORT
+---------------------------
+Frequency: Weekly. Provides projected deal closures based on median time-to-close.
+Location: C:\Users\[Name]\...\05 - Initiatives\Reports
+Instructions are on the "Steps" tab of the report.
+Check against Trades Template at: C:\Users\[Name]\...\05 - Initiatives\Trades
+
+Dependencies: Two Omni reports generated and emailed every Monday at 8:30 AM EST to
+the "Badger" distro list:
+  - Funnel Pipeline Details (Summary by Application Stage)
+  - Daily Expected Volume | Next 30 Days
+
+
+SALUDA QUARTERLY CAPITAL MARKETS DECK
+---------------------------------------
+Frequency: Quarterly. Request from Madison Cheo at Saluda.
+Trusts: UNLOK 2022-1, UNLOK 2023-1, UNLOK 2024-1, UNLOK 2024-2.
+
+Data fields required:
+  - INVEST PMT — from Month End Positions Tape (INVESTMENT_PAYMENT_CURRENT, Column L)
+  - CURRENT WA CREDIT SCORE — from Active Only Strats
+  - CURRENT WA CLTV — from Active Only Strats
+  - CURRENT WA ACL — from Active Only Strats
+  - 3M CPR — from Prepay Calendar Report
+  - LTD CPR — 24-Month CPR from Prepay Calendar Report
+  - 3M CDR — from Performance Report (ByCalendar tab)
+  - LTD CDR — from Performance Report, using trust start date
+
+CDR computation: Run performance report. Update stored proc GetPerformanceAssetsData
+with trust filter. Copy asset IDs, max IDs, final disposition dates, and investment payments
+for all closed auctions from the Auction Tracker to "Default + Loss Severity" tab.
+
+Trust start dates for LTD CDR:
+  UNLOK 2022-1: 9/6/2022
+  UNLOK 2023-1: 8/31/2023
+  UNLOK 2024-1: 3/27/2024
+  UNLOK 2024-2: 9/26/2024
+  UNLOK 2025-1: 6/30/2025
+  UNLOK 2025-2: 11/14/2025
+  UNLOK 2025-3: 12/18/2025
+
+Footnotes to include:
+  *CPRs weighted by prior months outstanding Investment Payment
+  *LTD CPR represented by 24mo CPR
+
+Save to: A:\04 - Investors\Saluda Grade\Quarterly Reports\
+
+
+LIBREMAX ASSIGNMENTS FOR RECORDING
+-------------------------------------
+LibreMax requires a recorded assignment from UPS (or other originating entity) to be
+recorded against one of two trusts they own:
+  - UNLOCK LEX RESIDENTIAL INVESTMENTS TRUST 2022-1 (LEX 1)
+  - UNLOCK LEX RESIDENTIAL INVESTMENTS TRUST 2022-2 (LEX 2)
+
+Assignment templates are at:
+  A:\00 - Operations\Consumer Docs\Assignment of Deed of Trust - Lex1
+  A:\00 - Operations\Consumer Docs\Assignment of Deed of Trust - Lex2
+  A:\00 - Operations\Consumer Docs\Assignment of Performance Mortgage - Lex1
+  A:\00 - Operations\Consumer Docs\Assignment of Performance Mortgage - Lex2
+
+Steps:
+1. Copy target asset IDs to Badger search screen → Click Search.
+2. Select all → right click → Admin Tasks → Generate Assignment of Security.
+   Choose "No" to Upgrading to Deal Insert.
+   Choose which LibreMax entity (LEX 1 or LEX 2); choosing "No" to both generates blank.
+   Choose "No" to overwriting existing assignments.
+   Run without Spawning first; then repeat WITH Spawning (opens PDFs).
+3. Combine PDFs into single file.
+4. Generate breakdown for CET using SQL query on vTradesEx joined to vAssetsEx and closing.
+   Filter on relevant LibreMax trade IDs.
+5. Generate state breakdown using PIVOT query on vTradesEx joined to vAssetsEx.
+6. Send PDFs and Excel breakdowns to Zach Winslow via #libremax-ewb-investor-relations Slack.
+   Zach forwards to CET for recording.
+
+NOTE: Assignments are now generated as blank in MAX and shipped with closing docs.
+ClearEdge Title has limited POA and signs assignments on behalf of Unlock, then ships to
+document custodian. Generating assignments in Badger is ONLY required for LibreMax LEX 1/2
+recording — not for standard origination flow.

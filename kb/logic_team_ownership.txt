@@ -1,0 +1,67 @@
+=== BADGER KB: LOGIC — TEAM OWNERSHIP AND ESCALATION ===
+Responsible Department: Investment Operations
+Last Updated: May 2026
+NOTE: This list reflects the current small team and will grow as new members join.
+============================================================
+
+OVERVIEW
+--------
+When triaging a Badger issue, use this file to determine who to assign or escalate to.
+Team members may own multiple domains. Issues should be routed to the owner of the
+relevant domain. If uncertain, escalate to Jagat Shah.
+
+
+TEAM MEMBERS AND DOMAINS
+--------------------------
+
+Jagat Shah (jagat.shah@unlock.com)
+  Slack: @Jagat_Shah
+  Owns:
+  - Wires and treasury escalations (wire approvals, TCB, JPM, UF2 account issues)
+  - Credit mapping and tradelines (tradeline mapping, CRS, credit loads)
+  - Engineering and code issues (broken Excel tools, macro errors, stored procedure
+    failures, Badger application bugs, UnlockToolkit add-in issues, DB errors)
+  - General escalation point when domain is unclear
+
+Brian Rubin (brian.rubin@unlock.com)
+  Slack: @Brian_Rubin
+  Owns:
+  - Wires and treasury escalations (wire approvals, TCB, JPM, UF2 account issues)
+  - Credit mapping and tradelines (tradeline mapping, CRS, credit loads)
+  - Lien alerts and surveillance (weekly lien alert processing, Black Knight,
+    forwarding to Servicing team)
+
+
+DOMAIN-TO-OWNER QUICK REFERENCE
+---------------------------------
+Issue Type                          → Assign To
+--------------------------------------------------
+Wire setup / approval               → Jagat Shah, Brian Rubin
+TCB / JPM / UF2 account issues      → Jagat Shah, Brian Rubin
+Credit load failures                → Jagat Shah, Brian Rubin
+Tradeline mapping                   → Jagat Shah, Brian Rubin
+Missing credit scores / tradelines  → Jagat Shah, Brian Rubin
+Lien alert processing               → Brian Rubin
+Black Knight SFTP / upload issues   → Brian Rubin
+Surveillance forwarding             → Brian Rubin
+Excel tool errors (#NAME?, macros)  → Jagat Shah
+Badger application bugs             → Jagat Shah
+UnlockToolkit add-in not loading    → Jagat Shah
+Stored procedure / SQL errors       → Jagat Shah
+Badger import / asset not loading   → Jagat Shah
+Settlement calculator issues        → Jagat Shah
+Quick Publisher not working         → Jagat Shah
+Engineering escalations (any code)  → Jagat Shah
+Unknown / unclear domain            → Jagat Shah
+
+
+EXTERNAL CONTACTS FOR SPECIFIC WORKFLOWS
+------------------------------------------
+These are not internal triage owners but key contacts referenced in KB processes:
+
+Nick Carnot, Brandan Carlson — Servicing team. Receive weekly lien alert reports.
+Justin Burke — Confirms tradeline mapping thresholds each Tuesday.
+Kevin Nerney (kevin@unlock.com) — Signs LibreMax equity balance certifications.
+John Park (john.park@unlock.com) — Built the MAX Product Support Agent (engineering reference).
+Christine — Point of contact for TCB underpayment transactions.
+

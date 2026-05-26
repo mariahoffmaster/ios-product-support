@@ -1,0 +1,220 @@
+=== BADGER KB: LOGIC — MONTHLY REPORTING AND TAPES ===
+Responsible Department: Investment Operations / Capital Markets
+Last Updated: May 2026
+============================================================
+
+OVERVIEW
+--------
+Monthly reporting includes generating position tapes, strats reports, performance reports,
+MSR valuation tapes, and investor distribution packages. Most monthly reports are due by
+the 15th of each month. The data flows from the UAM database through SQL scripts and
+Excel templates to final deliverables sent to investors and internal stakeholders.
+
+
+KEY TOOLS AND TEMPLATES
+-----------------------
+- Strats Template.xlsb — C:\Users\[Name]\...\05 - Initiatives\Strats\Strats Template.xlsb
+  Generates statistical stratification reports (Strats PDFs) and position tapes.
+  "Single Guitar" button = generate one report. "Do All" button = all reports.
+  Settings tab: paste asset IDs, configure bucket (e.g., bucket_investment_payment).
+- Strats Template - 60 Months.xlsb — Used for CPR Strats (3m, 6m) and HPI calendar reports.
+- New Tape Format v8.sql — A:\00 - Operations\Scripts\New Tape Format v8.sql
+  Primary script for generating position tapes. @cutoff sets the tape date.
+- New Tape Format v8 - Month End Tape.sql — Month-end specific tape variant.
+- New Tape Format v8-LibreMax Borrowing Base.sql — LibreMax-specific tape.
+- New Tape Format v8 - MSR.sql — MSR valuation tape.
+- Performance Report — Excel tool tracking CPR and CDR. Has "Assets", "Default + Loss
+  Severity", "ByCalendar", and "CPR" tabs.
+- Brian's Tool (Prepays, Strats) — Separate tool for CPR/prepayment reports.
+- TOAD — SQL client. Must be set to "Fetch All rows" before running tape queries.
+- Omni / Sigma — Reporting dashboards for trade and pipeline data.
+
+
+KEY DIRECTORIES
+---------------
+- A:\05 - Initiatives\Strats — Strats templates and outputs.
+- A:\05 - Initiatives\Strats\StratsMonthlyRecon — Monthly strats reconciliation folder.
+- A:\04 - Investors\[INVESTOR_NAME]\Monthly Reporting — Per-investor monthly report storage.
+- A:\05 - Initiatives\Month End — All Orig and position tape outputs.
+- A:\05 - Initiatives\Month End\YYYYMM — Monthly subfolder (e.g., 202508).
+- A:\04 - Investors\MSR\Monthly Reporting\[Month] — MSR valuation tape outputs.
+- A:\04 - Investors\Saluda Grade\Month End Allocations — Saluda monthly strats/tapes.
+- A:\04 - Investors\Saluda Grade\Quarterly Reports — Saluda quarterly capital markets deck.
+
+
+KEY TERMINOLOGY
+---------------
+- @cutoff — SQL variable set to month-end date for tape generation (e.g., '11/30/2024').
+- INVESTMENT_PAYMENT_CURRENT (Column L) — Current position investment payment in tapes.
+- Active Only — Report scope filtering to only active (not closed/settled) assets.
+- Strats — Statistical stratifications: credit score, CLTV, ACL, exchange rate, age,
+  lien position, property type, HPI, etc.
+- Tape — Asset-level data export in Excel. Position tape = all assets in account at cutoff.
+- CPR — Conditional Prepayment Rate (prepayment speed). 3M = trailing 3 months.
+- CDR — Conditional Default Rate. Considers a default when auction has completed;
+  uses investment_payment as defaulted amount.
+- LTD CPR — 24-month CPR used as Life-to-Date proxy.
+- LTD CDR — CDR from trust start date to reporting date.
+- WAVG — Weighted average (e.g., WA Credit Score, WA CLTV, WA ACL).
+- WA CLTV — Weighted Average Combined Loan-to-Value.
+- WA ACL — Weighted Average Appraised Current Lien.
+- bucket_investment_payment — Strats bucketing configuration used for investor reports.
+- MSR — Mortgage Servicing Rights. Sold assets that are tracked for NPV valuation.
+- NPV — Net Present Value of sold MSR assets.
+- XIRR — Extended Internal Rate of Return. Calculated by the Analytics engine.
+- HPI — Home Price Index (Zillow ZHVI). Used in cashflow and pricing models.
+- QCS_REPORT — Quarterly statement for funded deals.
+- DLQ — Delinquency. Monthly DLQ Summary sent to Portfolio Management.
+
+
+ACTIVE ONLY MONTHLY REPORTING RECON
+--------------------------------------
+Cadence: Monthly. Due: 15th of each month.
+Accounts: All Origination, 23-1, 24-1, 24-2, 25-1, 25-2, D2.
+
+Step 1: Generate Month End (Position) Tape
+  See "Month End Tape Generation" section below.
+
+Step 2: Run Single Bucket Strats on All Orig & Securitizations
+  Open Strats Template.xlsb. Paste asset IDs in Settings tab.
+  Configure bucket. Click Single Guitar button.
+
+Step 3: Generate Performance Report
+  Before generation, check each vintage/securitization using template checks.
+  Review data — ensure nothing gets zero'd out after generation.
+
+Step 4: Perform Reconciliations
+  Verify strat outputs match tape totals.
+  Save reconciliation files to A:\05 - Initiatives\Strats\StratsMonthlyRecon.
+
+Step 5: Generate Full Strats Packages + Tapes
+  Run for all accounts in the account list.
+
+Step 6: Confirm all documents have been generated.
+  Check All Orig Folder (A:\05 - Initiatives\Month End) and each investor folder.
+
+Step 7: Distribute
+  Send 6 PDFs + tape to #investor_reporting Slack channel.
+  Save to each investor's Monthly Reporting folder.
+
+
+MONTH END TAPE GENERATION
+---------------------------
+Script: A:\00 - Operations\Scripts\New Tape Format v8 - Month End Tape.sql
+
+Steps:
+1. Open script. Set cutoff to the month end being generated:
+   DECLARE @cutoff as date
+   SET @cutoff = 'MM/DD/YYYY'  -- e.g., '11/30/2024'
+
+2. Ensure TOAD is set to Fetch All rows.
+
+3. Ensure the query WHERE clause is not filtering on any specific assets.
+
+4. Run query.
+
+5. Copy output to Excel.
+   Remove first four columns: Account, Trade Id, Trade Date, Settle Date.
+   Copy formats from previous month end file.
+   Save to: A:\Asset Management - Documents\05 - Initiatives\Month End\[MMYYYY]\
+   Example: A:\...\202508\Unlock Historical Origination Tape - Aug 2025.xlsx
+
+
+CAPITAL MARKETS REPORTING PACKAGE
+------------------------------------
+Save location: C:\Users\[Name]\...\05 - Initiatives\Month End
+
+Reports needed:
+  - Month End tape — QC Checked
+    Unlock Historical Origination Tape (EXCEL) - 60mo
+  - Performance Report — Check each vintage before generation
+    Performance Report All Origination + Vintage Calendar (EXCEL) - 60mo
+    Performance Report All Origination Seasoning (EXCEL) - 60mo
+  - Prepays (Brian's Tool)
+    Prepays - Seasoning – All Origination (EXCEL) - 60mo
+    Prepay - Calendar – All Origination (EXCEL) - 60mo
+  - Strats (Brian's Tool)
+  - HPI - Calendar 60 Months - All Origination (60 months Strats; old format)
+    Run separately: 3m, 6m, Vintage, MSA Buckets
+    Save HPI Calendar Generic as new tabs with those settings; single guitar run.
+
+Primary template: Strats Template – 60 Months.xlsb (for CPR + HPI reports).
+
+
+D2 MONTHLY HISTORICAL ORIGINATION TAPE
+-----------------------------------------
+This is the position tape sent to D2 Capital monthly.
+QC workflow: Generate tape → QC check → send to Capital Markets (Jin Im, Peter) for review
+→ if approved, send to D2.
+
+After tape passes QC, post to #investor-relations Slack for Capital Markets to approve.
+Tape location example (Aug 2025):
+  C:\Users\[Name]\...\Month End\202508\Unlock Historical Origination Tape - Aug 2025.xlsx
+
+Email distribution:
+  To: Greg Linton (glinton@d2-am.com)
+  CC: Joon Lee (jlee@d2-am.com), Jin Im (Jin.Im@unlock.com),
+      Jagat Shah (Jagat.Shah@unlock.com), Jehona Ahmeti (jehona.ahmeti@unlock.com),
+      Zachary Winslow (zach.winslow@unlock.com), Brian Rubin (brian.rubin@unlock.com)
+
+
+MSR MONTHLY VALUATION TAPE
+-----------------------------
+Purpose: Calculate NPV of sold assets in investor accounts.
+Sheet location: A:\04 - Investors\MSR\Monthly Reporting\[Month]
+
+Step 1: Create new month folder. Copy previous month [Formulas] file. Rename to current month.
+  (Set Calculations to Manual for efficiency.)
+
+Step 2: Roll Forward tab — create new month entry. Copy formulas from previous month,
+  then copy previous month as values (only latest month should have active formulas).
+
+Step 3: Update Valuation Date in "Global Inputs" tab (cell B5).
+
+Step 4: Confirm list of accounts is up to date.
+
+Step 5: Delete data tables in "Model Outputs - All Retained" and "Model Outputs - Not Retained"
+  from cell J8 to end (Ctrl+Right, Ctrl+Down) — will be rebuilt.
+
+Step 6: Update Previous Month tab with latest MSR data using:
+  A:\00 - Operations\Scripts\New Tape Format v8 - MSR.sql
+  Set include_zero_positions = 1:
+    declare @include_zero_positions bit = 1
+  Generate tape for previous month end. Copy to previous month's data tab. Update tab name.
+  Keep first column (Account) formula. Check formulas in Red-highlighted columns of
+  "Asset Inputs" tab cover full range of tape data.
+
+Step 7: Asset Inputs tab maintenance:
+  - Remove prior UPS assets (filter on UPS, remove assets with effective_date < valuation_date,
+    with three specific asset exceptions).
+  - Add new UPS assets (newly generated assets not yet traded). Run MSR tape query for
+    UPS and UF2 only with include_zero_positions=0.
+  - Copy data to columns B–W. Columns X–Z are formulas; copy down.
+  - Column AA (HEA Settle Date) = Settle Date (column U) for traded assets; blank for UPS.
+  - Column AE (funding_date) — leave untouched for old assets; use Fundings_New for new assets.
+  - Initial MSR and Additional MSR trade IDs — manually populate for NEW ENTRIES ONLY.
+    Update both MSR Trade ID AND MSR Settle Date each month. Missing MSR Settle Date causes
+    Non Retained tab to run incorrectly.
+  - All UPS assets should have blank Settle Date (column U).
+  - Add new trades: run MSR Tape query for accounts with a trade that month; filter on
+    settle date in that month only; copy to bottom of sheet.
+
+Step 8: Checks — "Global Inputs" tab checks should all be green.
+  Confirms summary and Asset Inputs have same asset count and total investment payments.
+
+Step 9: Setup Model Output tables.
+  Copy account and asset IDs from Asset Inputs to "Model Outputs - All Retained" and
+  "Model Outputs - Not Retained" (columns H and I).
+  Copy formulas in columns A–G down to match new asset IDs.
+
+Step 10: Set up data tables.
+  In each Model Outputs tab, select from I7 to end.
+  Use What-If Analysis → Data Table. Input cell: $I$3 in "column input cell".
+  Repeat for both All Retained and Not Retained tabs.
+
+
+SALUDA QUARTERLY CAPITAL MARKETS DECK
+  (See logic_trades_investor.txt for full details)
+  Trusts: UNLOK 2022-1, 2023-1, 2024-1, 2024-2.
+  Due: Quarterly. Data from Strats, Performance Report, Prepay Calendar.
+  CDR defaults counted when auction completes; uses investment_payment as defaulted amount.

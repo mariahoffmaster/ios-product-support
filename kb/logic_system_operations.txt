@@ -1,0 +1,165 @@
+=== BADGER KB: LOGIC — SYSTEM OPERATIONS AND ADMINISTRATION ===
+Responsible Department: Investment Operations / Engineering
+Last Updated: May 2026
+============================================================
+
+OVERVIEW
+--------
+This file covers technical operations for maintaining the Badger/UAM system:
+asset import processes, handling second-deal applicant mapping, MAX status updates,
+encrypted column key recertification, and the Zensync integration with Zendesk.
+
+
+KEY SYSTEMS
+-----------
+- Badger — Main servicing and asset management application. UAM flaire = import trigger.
+- UAM Database — SQL Server database (server: uam_reporting). Core data store.
+- MAX — Deal management system. API_XXXXX tables feed into Badger via import stored proc.
+- Zendesk — Customer support platform. Zensync keeps Zendesk users and tickets in sync.
+- Azure Portal — Manages application credentials for Badger's encrypted column access.
+- BatCave — Admin tool within the Badger ecosystem.
+- CommonInterfaces.Constants.cs — Contains Badger application secrets and configuration.
+
+
+ASSET IMPORT
+-------------
+Standard import: post closing double-clicks UAM flaire in Badger and enters asset_id.
+This launches sp_MAX_Badger_Import_ALL, which imports data from API_XXXXX tables into
+the Badger tables.
+
+
+ASSET IMPORT ISSUES — SECOND (OR SUBSEQUENT) DEAL FOR SAME APPLICANT
+-----------------------------------------------------------------------
+Issue: Applicant already exists in the system AND asset exists in the closing table,
+but no record exists in the Assets table. Confirm by double-clicking UAM Flaire in Badger,
+loading the asset, and clicking "Pre Check".
+  - If "Asset in Closing Table" = Yes AND "Applicant Exists" = Yes AND asset NOT in Assets table,
+    use the following fix:
+
+Step 1: Run asset import directly:
+  EXEC [dbo].[sp_MAX_Badger_Import_All] '[asset_id]', 'unlockfin', 1
+  Note: May produce error messages for second deals (e.g., existing mortgage already in
+  Debt table). Ignore these errors; check output to confirm other table entries succeeded.
+
+Step 2: Check if applicant exists from the earlier deal:
+  DECLARE @p_Exists int = 1
+  EXEC sp_MAX_Badger_Import_Check_For_Applicant [asset_id], @p_Exists OUTPUT, 1
+  SELECT @p_Exists
+
+Step 3: If applicant exists, add applicants to new asset in AssetApplicantMaps:
+  EXEC MapSecondDealApplicant '[asset_id]'
+
+Step 4: Address matching issues:
+  The applicant check uses address_full from vAssetsEx. If the same address has different
+  spelling variations across deals (e.g., "Kashlan Road" vs "Kashlan Rd"), the automatic
+  match will fail. In that case, find the applicant_id from the original asset and insert
+  directly:
+  INSERT INTO AssetApplicantMap (asset_id, applicanttype_id, applicant_id, update_by)
+  VALUES ([new_asset_id], 1, [applicant_id], 'test')
+  INSERT INTO AssetApplicantMap (asset_id, applicanttype_id, applicant_id, update_by)
+  VALUES ([new_asset_id], 2, [co_applicant_id], 'test')
+
+
+FUNDED ASSET CANCELLATION
+(See logic_settlements.txt for full details)
+Summary: Use EXEC ProcessAssetFailedToClose '[asset_id]' for standard cancellation.
+Use EXEC ProcessAssetFailedToClose '[asset_id]', 1 for Right of Rescission.
+Notify TCB, Suntera, WSFS, and post in #Ninja-Life and #Post-Closing.
+
+
+UPDATE MAX STATUS FOR RELEASED WIRES
+(See logic_wires_banking.txt)
+Summary: Change MAX sub-stage from "Pending Escrow Disbursement" to "Recording" via:
+https://max.unlock.com/ops/applications/[asset_id]/deal-summary
+Normally automated by MAX Button in BulkFunding Template.
+
+
+ENCRYPTED COLUMN KEY RECERTIFICATION
+---------------------------------------
+Background: The SSN column in dbo.Applicants is encrypted using:
+  COLUMN_ENCRYPTION_KEY = [CEK_Auto1]
+  ENCRYPTION_TYPE = Deterministic
+  ALGORITHM = 'AEAD_AES_256_CBC_HMAC_SHA_256'
+This prevents SSN from being read directly via service credential queries.
+Decryption requires authorized users logged in with Windows Authentication.
+
+Key expiration: Every 2 years.
+Current key expires: 1/6/2027
+Expiry symptom: Users see errors when opening Badger screens showing SSN:
+  "The provided client secret keys for app 'c41c4f67-...' are expired."
+
+Steps to issue a new certificate:
+1. Log into Azure Portal. Search for the Badger Application.
+2. Under "Manage" → "Certificates and Secrets".
+3. Add "New Client Secret". Description: pw[X] (next sequential number).
+   Set expiry to 2 years.
+4. Copy the new key value to clipboard.
+5. Update CommonInterfaces\Constants.cs in Badger code:
+   - Comment out old APPLICATION_SECRET with expiration date in comment.
+   - Add new APPLICATION_SECRET value.
+   Location: public static class BADGER
+     APPLICATION_ID = "c41c4f67-8042-4180-ad21-fb4035678963"
+     DIRECTORY_ID = "f3665247-4a8f-42a3-bfd1-b2c5b1900fbd"
+     APPLICATION_SECRET = "[new secret value]" // ACTIVE → EXPIRES: [date]
+   NOTE: Actual secret values are NOT stored in this KB. Retrieve from Azure Portal.
+6. Release a new build of Badger.
+
+
+ZENSYNC — ZENDESK INTEGRATION
+--------------------------------
+Overview: Zensync synchronizes data between UAM and Zendesk in two directions:
+  - Load Users: Pushes all UAM applicants as Users in Zendesk (eliminates manual entry
+    by Nick and team).
+  - Load Tickets: Pulls Zendesk tickets tagged with Defaults into UAM as Default records.
+Both processes use delta values — tracking last updated_at from dbo.ZenSync_Runs table.
+
+Key components:
+  - Program.cs (entry point) — Selects which process to run (Load Users or Load Tickets).
+    Note: API keys are stored as plaintext in this file and need rotation.
+  - Zenclient.cs (in Zenlib) — Contains cache for the Defaults table. Loaded at init.
+    Cache is per-instance (not static); if multiple instances needed, consider making static.
+    Implements exponential backoff for rate limiting:
+      Retries requests with increasing delays to handle Zendesk rate limits and SSL
+      certificate expiry mid-run. Retry loop increases delay on each failure attempt.
+  - dbo.ZenSync_Runs — Tracks last sync timestamp for delta processing.
+
+Note: Zensync API keys in Program.cs are stored as plaintext and need to be rotated
+periodically. Contact engineering when rotation is needed.
+
+
+KEY STORED PROCEDURES (SUMMARY)
+---------------------------------
+- sp_MAX_Badger_Import_All '[asset_id]', 'unlockfin', 1 — Import asset from MAX API tables.
+- sp_MAX_Badger_Import_Check_For_Applicant [asset_id], @p_Exists OUTPUT, 1 — Check applicant.
+- MapSecondDealApplicant '[asset_id]' — Map existing applicant to second deal.
+- ProcessAssetFailedToClose '[asset_id]' — Standard funded asset cancellation.
+- ProcessAssetFailedToClose '[asset_id]', 1 — Right of Rescission cancellation.
+- GetTCBBankTrans [amount] — Retrieve TCB bank transaction IDs by amount.
+- ResetSettlement '[asset_id]' — Delete/cancel a processed settlement.
+- ProcessCreditReports @load_id, @clear=true — Process credit report batch.
+- ProcessTradeLinesSimple — Copy credit scores from CRScores to CreditScores.
+- ProcessCreditReportNew — Process new credit report data.
+- sp_post_lien_alerts_proc — Post-load cleanup for lien alerts.
+- GetPerformanceAssetsData — Performance report data retrieval (with trust filter).
+
+
+KEY SLACK CHANNELS FOR OPERATIONS
+------------------------------------
+- #settlement_queue — Incoming settlement wire notifications.
+- #settlements — Post-settlement confirmation messages.
+- #badger-ops — Badger operational issues, missing data flags.
+- #Badger_Ops — Settlement cancellation confirmations.
+- #cash_management — Wire approval requests (dual approval required, deadline 1:30 PM EST).
+- #post_closing — Daily funding coordination with post-closing team.
+- #badger_growls — CET disbursement processing notifications.
+- #ninja_life — Internal team escalations, cancellations needing team input.
+- #investor_reporting — Monthly strats and tape distribution.
+- #investor-relations — D2 tape approvals (Capital Markets).
+- #d2-investor-relations — D2 investor communications.
+- #libremax-ewb-investor-relations — LibreMax assignment and reporting channel.
+- #diligence_war_room — Maxwell diligence process updates.
+- #maxwell_unlock_diligence — Maxwell SFTP upload notifications.
+- #lien_alerts — Weekly lien alert results forwarded to Servicing.
+- #credit_mapping_committee — Proposed tradeline mapping confirmations.
+- #refunds — Underpayment and refund notifications.
+- #prd-alerts — PRD posts from Requirements flow (MAX agent).
