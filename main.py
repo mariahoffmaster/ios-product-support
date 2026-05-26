@@ -1,399 +1,364 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Badger Support — Ticket Dashboard</title>
-<style>
-  :root {
-    --bg: #f4f5f7;
-    --white: #ffffff;
-    --border: #e1e4e8;
-    --text: #1a1a2e;
-    --muted: #6b7280;
-    --blue: #2563eb;
-    --blue-light: #eff6ff;
-    --green: #16a34a;
-    --green-light: #f0fdf4;
-    --yellow: #d97706;
-    --yellow-light: #fffbeb;
-    --purple: #7c3aed;
-    --purple-light: #f5f3ff;
-    --red: #dc2626;
-    --red-light: #fef2f2;
-    --gray: #6b7280;
-    --gray-light: #f9fafb;
-    --unlock-teal: #0891b2;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         background: var(--bg); color: var(--text); min-height: 100vh; }
+"""
+Badger Support Agent
+Slack bot that categorizes, assigns, and tracks issues for Unlock Investment Operations
+"""
 
-  /* Header */
-  .header { background: var(--white); border-bottom: 1px solid var(--border);
-             padding: 16px 32px; display: flex; align-items: center;
-             justify-content: space-between; }
-  .header h1 { font-size: 20px; font-weight: 700; color: var(--unlock-teal); }
-  .header .subtitle { font-size: 13px; color: var(--muted); margin-top: 2px; }
-  .refresh-btn { background: var(--blue); color: white; border: none;
-                 padding: 8px 16px; border-radius: 6px; cursor: pointer;
-                 font-size: 13px; font-weight: 500; }
-  .refresh-btn:hover { background: #1d4ed8; }
+import os
+import json
+import hmac
+import hashlib
+import logging
+import time
+import re
+import sqlite3
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+from contextlib import asynccontextmanager
 
-  /* API config */
-  .api-bar { background: #fff8f0; border-bottom: 1px solid #fde68a;
-             padding: 10px 32px; display: flex; align-items: center; gap: 12px; }
-  .api-bar label { font-size: 13px; font-weight: 500; color: var(--yellow); }
-  .api-bar input { border: 1px solid #fde68a; border-radius: 5px; padding: 5px 10px;
-                   font-size: 13px; width: 420px; }
-  .api-bar button { background: var(--yellow); color: white; border: none;
-                    padding: 6px 14px; border-radius: 5px; cursor: pointer; font-size: 13px; }
+import uvicorn
+import anthropic
+from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
+from rank_bm25 import BM25Okapi
 
-  /* Summary cards */
-  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-             gap: 16px; padding: 24px 32px 0; }
-  .card { background: var(--white); border: 1px solid var(--border); border-radius: 10px;
-          padding: 16px 20px; }
-  .card .num  { font-size: 32px; font-weight: 700; line-height: 1; }
-  .card .lbl  { font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 500;
-                text-transform: uppercase; letter-spacing: 0.04em; }
-  .card.total .num { color: var(--text); }
-  .card.new   .num { color: var(--blue); }
-  .card.assigned .num { color: var(--purple); }
-  .card.inprogress .num { color: var(--yellow); }
-  .card.resolved .num { color: var(--green); }
+from badger_domain_expansions import DOMAIN_EXPANSIONS
 
-  /* Category breakdown */
-  .breakdown { padding: 20px 32px 0; display: grid;
-               grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-  .cat-card { background: var(--white); border: 1px solid var(--border);
-              border-radius: 8px; padding: 14px 18px;
-              border-left: 4px solid var(--border); }
-  .cat-card.badger       { border-left-color: var(--blue); }
-  .cat-card.excel        { border-left-color: var(--purple); }
-  .cat-card.dealdata     { border-left-color: var(--yellow); }
-  .cat-card.adhoc        { border-left-color: var(--unlock-teal); }
-  .cat-card .cat-name    { font-size: 12px; font-weight: 600; color: var(--muted);
-                           text-transform: uppercase; letter-spacing: 0.04em; }
-  .cat-card .cat-count   { font-size: 26px; font-weight: 700; margin-top: 2px; }
-  .cat-card .cat-assignee { font-size: 12px; color: var(--muted); margin-top: 2px; }
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
 
-  /* Filters */
-  .filters { padding: 20px 32px 0; display: flex; gap: 12px; flex-wrap: wrap;
-             align-items: center; }
-  .filters label { font-size: 13px; font-weight: 500; color: var(--muted); }
-  .filters select, .filters input {
-    border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px;
-    font-size: 13px; background: var(--white); color: var(--text); }
-  .filters select:focus, .filters input:focus { outline: 2px solid var(--blue); }
-  .clear-btn { font-size: 13px; color: var(--blue); cursor: pointer;
-               background: none; border: none; text-decoration: underline; }
 
-  /* Table */
-  .table-wrap { padding: 20px 32px 40px; overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; background: var(--white);
-          border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-  thead th { background: var(--gray-light); padding: 10px 14px; text-align: left;
-             font-size: 12px; font-weight: 600; color: var(--muted);
-             text-transform: uppercase; letter-spacing: 0.04em;
-             border-bottom: 1px solid var(--border); }
-  tbody tr { border-bottom: 1px solid var(--border); }
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: #f8fafc; }
-  td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
-  .ticket-id { font-weight: 700; color: var(--muted); white-space: nowrap; }
-  .desc-cell { max-width: 320px; }
-  .desc-text { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2;
-               -webkit-box-orient: vertical; line-height: 1.4; }
+# ── CONFIGURATION ──────────────────────────────────────────────────────────────
 
-  /* Badges */
-  .badge { display: inline-block; padding: 3px 8px; border-radius: 12px;
-           font-size: 11px; font-weight: 600; white-space: nowrap; }
-  .badge-badger    { background: var(--blue-light);   color: var(--blue); }
-  .badge-excel     { background: var(--purple-light);  color: var(--purple); }
-  .badge-dealdata  { background: var(--yellow-light);  color: var(--yellow); }
-  .badge-adhoc     { background: #e0f7fa;              color: var(--unlock-teal); }
-  .badge-new       { background: var(--blue-light);    color: var(--blue); }
-  .badge-assigned  { background: var(--purple-light);  color: var(--purple); }
-  .badge-inprogress{ background: var(--yellow-light);  color: var(--yellow); }
-  .badge-resolved  { background: var(--green-light);   color: var(--green); }
+ANTHROPIC_API_KEY    = os.environ.get("ANTHROPIC_API_KEY", "")
+SLACK_BOT_TOKEN      = os.environ.get("SLACK_BOT_TOKEN", "")
+SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", "")
 
-  .status-select { border: none; background: transparent; font-size: 12px;
-                   font-weight: 600; cursor: pointer; padding: 3px 4px; border-radius: 4px; }
-  .status-select:focus { outline: 2px solid var(--blue); }
+MODEL             = "claude-sonnet-4-6"
+KB_DIR            = Path(__file__).parent / "kb"
+DB_PATH           = Path(__file__).parent / "tickets.db"
+CHUNK_SIZE        = 100
+CHUNK_OVERLAP     = 20
+TOP_K             = 20
+MAX_CONTEXT_CHARS = 60_000
 
-  .assignee-cell { white-space: nowrap; font-size: 12px; }
-  .assignee-name { font-weight: 600; }
-  .assignee-email { color: var(--muted); }
+# ── CATEGORY / ASSIGNMENT CONFIG ───────────────────────────────────────────────
 
-  .date-cell { white-space: nowrap; color: var(--muted); font-size: 12px; }
-  .submitter-cell { font-size: 12px; color: var(--muted); }
-
-  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
-  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
-  .error-banner { background: var(--red-light); color: var(--red); padding: 12px 32px;
-                  font-size: 13px; font-weight: 500; }
-</style>
-</head>
-<body>
-
-<div class="header">
-  <div>
-    <h1>Badger Support — Ticket Dashboard</h1>
-    <div class="subtitle">Investment Operations · Unlock Technologies</div>
-  </div>
-  <button class="refresh-btn" onclick="loadTickets()">↻ Refresh</button>
-</div>
-
-<div class="api-bar">
-  <label>Agent URL:</label>
-  <input type="text" id="apiUrl" placeholder="https://servicing-product-support-maria.unlock-bots.com"
-         value="https://servicing-product-support-maria.unlock-bots.com" />
-  <button onclick="loadTickets()">Connect</button>
-</div>
-
-<div id="errorBanner" class="error-banner" style="display:none"></div>
-
-<!-- Summary stats -->
-<div class="summary">
-  <div class="card total">
-    <div class="num" id="statTotal">—</div>
-    <div class="lbl">Total Tickets</div>
-  </div>
-  <div class="card new">
-    <div class="num" id="statNew">—</div>
-    <div class="lbl">New</div>
-  </div>
-  <div class="card assigned">
-    <div class="num" id="statAssigned">—</div>
-    <div class="lbl">Assigned</div>
-  </div>
-  <div class="card inprogress">
-    <div class="num" id="statInProgress">—</div>
-    <div class="lbl">In Progress</div>
-  </div>
-  <div class="card resolved">
-    <div class="num" id="statResolved">—</div>
-    <div class="lbl">Resolved</div>
-  </div>
-</div>
-
-<!-- Category breakdown -->
-<div class="breakdown">
-  <div class="cat-card badger">
-    <div class="cat-name">Badger</div>
-    <div class="cat-count" id="catBadger">—</div>
-    <div class="cat-assignee">→ Jagat Shah</div>
-  </div>
-  <div class="cat-card excel">
-    <div class="cat-name">Excel Toolkits</div>
-    <div class="cat-count" id="catExcel">—</div>
-    <div class="cat-assignee">→ Jagat Shah</div>
-  </div>
-  <div class="cat-card dealdata">
-    <div class="cat-name">Deal Data Quality</div>
-    <div class="cat-count" id="catDeal">—</div>
-    <div class="cat-assignee">→ Brian Rubin</div>
-  </div>
-  <div class="cat-card adhoc">
-    <div class="cat-name">Data Ad Hoc Request</div>
-    <div class="cat-count" id="catAdhoc">—</div>
-    <div class="cat-assignee">→ Jagat Shah</div>
-  </div>
-</div>
-
-<!-- Filters -->
-<div class="filters">
-  <label>Filter:</label>
-  <select id="filterCategory" onchange="renderTable()">
-    <option value="">All Categories</option>
-    <option>Badger</option>
-    <option>Excel Toolkits</option>
-    <option>Deal Data Quality</option>
-    <option>Data Ad Hoc Request</option>
-  </select>
-  <select id="filterStatus" onchange="renderTable()">
-    <option value="">All Statuses</option>
-    <option>New</option>
-    <option>Assigned</option>
-    <option>In Progress</option>
-    <option>Resolved</option>
-  </select>
-  <select id="filterAssignee" onchange="renderTable()">
-    <option value="">All Assignees</option>
-    <option>Jagat Shah</option>
-    <option>Brian Rubin</option>
-  </select>
-  <input type="text" id="filterSearch" placeholder="Search description..."
-         oninput="renderTable()" style="width:220px" />
-  <button class="clear-btn" onclick="clearFilters()">Clear filters</button>
-</div>
-
-<!-- Table -->
-<div class="table-wrap">
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Date</th>
-        <th>Submitted By</th>
-        <th>Description</th>
-        <th>Category</th>
-        <th>Assigned To</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody id="ticketBody">
-      <tr><td colspan="7" class="empty-state">
-        <div class="icon">📋</div>
-        <div>Click Refresh to load tickets</div>
-      </td></tr>
-    </tbody>
-  </table>
-</div>
-
-<script>
-let allTickets = [];
-const STATUSES = ["New", "Assigned", "In Progress", "Resolved"];
-
-function getApiUrl() {
-  return (document.getElementById('apiUrl').value || '').replace(/\/$/, '');
+CATEGORIES = {
+    "Badger":               {"assignee": "Jagat Shah",  "email": "jagat.shah@unlock.com"},
+    "Excel Toolkits":       {"assignee": "Jagat Shah",  "email": "jagat.shah@unlock.com"},
+    "Deal Data Quality":    {"assignee": "Brian Rubin", "email": "brian.rubin@unlock.com"},
+    "Data Ad Hoc Request":  {"assignee": "Jagat Shah",  "email": "jagat.shah@unlock.com"},
 }
 
-function showError(msg) {
-  const el = document.getElementById('errorBanner');
-  el.textContent = msg;
-  el.style.display = msg ? 'block' : 'none';
+AD_HOC_TEAMS = [
+    "Investor", "Legal", "Servicing",
+    "Capital Markets", "Accounting", "Portfolio Management",
+]
+
+TICKET_STATUSES = ["New", "Assigned", "In Progress", "Resolved"]
+
+ANCHOR_KEYWORDS = {
+    "logic_team_ownership.txt":    ["Jagat", "Brian"],
+    "logic_system_operations.txt": ["KEY SLACK CHANNELS"],
 }
 
-async function loadTickets() {
-  const url = getApiUrl();
-  if (!url) { showError('Please enter the agent URL above.'); return; }
-  showError('');
-  try {
-    const resp = await fetch(url + '/tickets');
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    allTickets = await resp.json();
-    updateStats();
-    renderTable();
-  } catch (e) {
-    showError('Could not load tickets: ' + e.message +
-              '. Make sure the agent is running and the URL is correct.');
-  }
-}
 
-function updateStats() {
-  const t = allTickets;
-  document.getElementById('statTotal').textContent     = t.length;
-  document.getElementById('statNew').textContent       = t.filter(x => x.status === 'New').length;
-  document.getElementById('statAssigned').textContent  = t.filter(x => x.status === 'Assigned').length;
-  document.getElementById('statInProgress').textContent= t.filter(x => x.status === 'In Progress').length;
-  document.getElementById('statResolved').textContent  = t.filter(x => x.status === 'Resolved').length;
-  document.getElementById('catBadger').textContent     = t.filter(x => x.category === 'Badger').length;
-  document.getElementById('catExcel').textContent      = t.filter(x => x.category === 'Excel Toolkits').length;
-  document.getElementById('catDeal').textContent       = t.filter(x => x.category === 'Deal Data Quality').length;
-  document.getElementById('catAdhoc').textContent      = t.filter(x => x.category === 'Data Ad Hoc Request').length;
-}
+# ── DATABASE ───────────────────────────────────────────────────────────────────
 
-function catClass(cat) {
-  if (cat === 'Badger')              return 'badger';
-  if (cat === 'Excel Toolkits')      return 'excel';
-  if (cat === 'Deal Data Quality')   return 'dealdata';
-  if (cat === 'Data Ad Hoc Request') return 'adhoc';
-  return 'badger';
-}
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS tickets (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at     TEXT NOT NULL,
+            submitted_by   TEXT NOT NULL,
+            description    TEXT NOT NULL,
+            category       TEXT NOT NULL,
+            sub_category   TEXT,
+            assignee       TEXT NOT NULL,
+            assignee_email TEXT NOT NULL,
+            status         TEXT NOT NULL DEFAULT 'New',
+            slack_channel  TEXT,
+            thread_ts      TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
 
-function statusClass(s) {
-  return s.toLowerCase().replace(' ', '');
-}
 
-function formatDate(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso + 'Z');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-}
+def create_ticket(submitted_by, description, category, sub_category, slack_channel, thread_ts):
+    cat = CATEGORIES[category]
+    conn = sqlite3.connect(DB_PATH)
+    cur  = conn.execute("""
+        INSERT INTO tickets (created_at, submitted_by, description, category,
+                             sub_category, assignee, assignee_email, status,
+                             slack_channel, thread_ts)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'New', ?, ?)
+    """, (datetime.utcnow().isoformat(), submitted_by, description, category,
+          sub_category, cat["assignee"], cat["email"], slack_channel, thread_ts))
+    ticket_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return ticket_id
 
-function renderTable() {
-  const catF    = document.getElementById('filterCategory').value;
-  const statF   = document.getElementById('filterStatus').value;
-  const asnF    = document.getElementById('filterAssignee').value;
-  const searchF = document.getElementById('filterSearch').value.toLowerCase();
 
-  const filtered = allTickets.filter(t =>
-    (!catF  || t.category === catF) &&
-    (!statF || t.status   === statF) &&
-    (!asnF  || t.assignee === asnF) &&
-    (!searchF || t.description.toLowerCase().includes(searchF) ||
-                 (t.sub_category||'').toLowerCase().includes(searchF))
-  );
+def get_tickets():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("SELECT * FROM tickets ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
-  const tbody = document.getElementById('ticketBody');
-  if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="7">
-      <div class="empty-state"><div class="icon">🔍</div><div>No tickets match your filters.</div></div>
-    </td></tr>`;
-    return;
-  }
 
-  tbody.innerHTML = filtered.map(t => {
-    const catLabel = t.sub_category ? `${t.category}<br><small style="color:#6b7280">${t.sub_category}</small>` : t.category;
-    return `
-    <tr>
-      <td class="ticket-id">#${t.id}</td>
-      <td class="date-cell">${formatDate(t.created_at)}</td>
-      <td class="submitter-cell">${esc(t.submitted_by)}</td>
-      <td class="desc-cell"><div class="desc-text" title="${esc(t.description)}">${esc(t.description)}</div></td>
-      <td><span class="badge badge-${catClass(t.category)}">${catLabel}</span></td>
-      <td class="assignee-cell">
-        <div class="assignee-name">${esc(t.assignee)}</div>
-        <div class="assignee-email">${esc(t.assignee_email)}</div>
-      </td>
-      <td>
-        <select class="status-select badge badge-${statusClass(t.status)}"
-                onchange="changeStatus(${t.id}, this)">
-          ${STATUSES.map(s => `<option ${s === t.status ? 'selected' : ''}>${s}</option>`).join('')}
-        </select>
-      </td>
-    </tr>`;
-  }).join('');
-}
+def update_ticket_status(ticket_id, status):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("UPDATE tickets SET status=? WHERE id=?", (status, ticket_id))
+    conn.commit()
+    conn.close()
 
-async function changeStatus(ticketId, selectEl) {
-  const newStatus = selectEl.value;
-  const url = getApiUrl();
-  try {
-    const resp = await fetch(`${url}/tickets/${ticketId}/status`, {
-      method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({status: newStatus}),
-    });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    // Update local state
-    const t = allTickets.find(x => x.id === ticketId);
-    if (t) t.status = newStatus;
-    updateStats();
-    renderTable();
-  } catch (e) {
-    showError('Failed to update status: ' + e.message);
-    await loadTickets(); // revert by reloading
-  }
-}
 
-function clearFilters() {
-  document.getElementById('filterCategory').value = '';
-  document.getElementById('filterStatus').value   = '';
-  document.getElementById('filterAssignee').value = '';
-  document.getElementById('filterSearch').value   = '';
-  renderTable();
-}
+# ── KB / BM25 ──────────────────────────────────────────────────────────────────
 
-function esc(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+def load_kb_chunks():
+    corpus, meta = [], []
+    step = CHUNK_SIZE - CHUNK_OVERLAP
+    for fpath in sorted(KB_DIR.rglob("*")):
+        if not fpath.is_file():
+            continue
+        try:
+            text = fpath.read_text(errors="replace")
+        except Exception:
+            continue
+        lines = text.splitlines()
+        for i in range(0, max(1, len(lines) - CHUNK_OVERLAP), step):
+            chunk = "\n".join(lines[i: i + CHUNK_SIZE])
+            corpus.append(chunk.lower().split())
+            meta.append({"file": fpath.name, "start": i, "text": chunk})
+    log.info(f"Loaded {len(corpus)} KB chunks")
+    return corpus, meta
 
-// Auto-load on page open
-loadTickets();
-</script>
-</body>
-</html>
+
+def build_anchor_chunks(meta):
+    seen, anchors = set(), []
+    for m in meta:
+        for kw in ANCHOR_KEYWORDS.get(m["file"], []):
+            if kw.lower() in m["text"].lower():
+                h = hashlib.md5(m["text"].encode()).hexdigest()
+                if h not in seen:
+                    seen.add(h)
+                    anchors.append(m["text"])
+                break
+    return anchors
+
+
+# ── GLOBAL STATE ───────────────────────────────────────────────────────────────
+
+_bm25:         Optional[BM25Okapi] = None
+_meta:         list                = []
+_anchors:      list                = []
+_seen_events:  dict                = {}
+_pending_adhoc: dict               = {}  # (channel, user) → {description, thread_ts}
+
+slack_client  = WebClient(token=SLACK_BOT_TOKEN)
+claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global _bm25, _meta, _anchors
+    init_db()
+    corpus, _meta = load_kb_chunks()
+    _bm25 = BM25Okapi(corpus)
+    _anchors = build_anchor_chunks(_meta)
+    log.info(f"Ready. {len(_meta)} chunks, {len(_anchors)} anchors.")
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+
+# ── CLASSIFICATION ─────────────────────────────────────────────────────────────
+
+CLASSIFY_PROMPT = """\
+You are a ticket classifier for Unlock Technologies Badger servicing system.
+Classify the issue into exactly one category:
+  - Badger           (system errors, application issues, asset imports, Badger app bugs)
+  - Excel Toolkits   (macro errors, #NAME? errors, PopulateAsset failures, calculator issues)
+  - Deal Data Quality (missing or incorrect deal/asset data, tradeline issues, credit data)
+  - Data Ad Hoc Request (one-off data pulls, report requests, data extracts)
+
+Respond with ONLY valid JSON. No markdown. No explanation.
+Example: {"category": "Badger"}
+"""
+
+def classify_issue(description):
+    try:
+        r = claude_client.messages.create(
+            model=MODEL, max_tokens=50,
+            system=CLASSIFY_PROMPT,
+            messages=[{"role": "user", "content": description}],
+        )
+        data = json.loads(r.content[0].text.strip())
+        cat  = data.get("category", "")
+        if cat in CATEGORIES:
+            return cat
+    except Exception as e:
+        log.error(f"Classification error: {e}")
+    return "Badger"
+
+
+# ── SLACK HELPERS ──────────────────────────────────────────────────────────────
+
+def verify_slack_signature(body, timestamp, signature):
+    base     = f"v0:{timestamp}:{body.decode('utf-8')}"
+    computed = "v0=" + hmac.new(SLACK_SIGNING_SECRET.encode(), base.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(computed, signature)
+
+
+def is_duplicate(event_id):
+    now = time.time()
+    for k in [k for k, v in _seen_events.items() if now - v > 300]:
+        del _seen_events[k]
+    if event_id in _seen_events:
+        return True
+    _seen_events[event_id] = now
+    return False
+
+
+def post_reply(channel, text, thread_ts=None):
+    try:
+        slack_client.chat_postMessage(channel=channel, text=text, thread_ts=thread_ts)
+    except SlackApiError as e:
+        log.error(f"Slack error: {e.response['error']}")
+
+
+def get_display_name(user_id):
+    try:
+        return slack_client.users_info(user=user_id)["user"]["real_name"] or user_id
+    except Exception:
+        return user_id
+
+
+# ── MESSAGE HANDLER ────────────────────────────────────────────────────────────
+
+def handle_message(text, channel, user, thread_ts):
+    clean = re.sub(r"<@[A-Z0-9]+>", "", text).strip()
+    if not clean:
+        return
+
+    key = (channel, user)
+
+    # Pending ad hoc — user is answering "which team?"
+    if key in _pending_adhoc:
+        pending = _pending_adhoc.pop(key)
+        matched = next((t for t in AD_HOC_TEAMS if t.lower() in clean.lower()), clean.title())
+        ticket_id = create_ticket(
+            submitted_by=get_display_name(user),
+            description=pending["description"],
+            category="Data Ad Hoc Request",
+            sub_category=matched,
+            slack_channel=channel,
+            thread_ts=thread_ts,
+        )
+        cat = CATEGORIES["Data Ad Hoc Request"]
+        post_reply(channel,
+            f":white_check_mark: Ticket #{ticket_id} created.\n"
+            f"*Category:* Data Ad Hoc Request — {matched}\n"
+            f"*Assigned to:* {cat['assignee']} ({cat['email']})\n"
+            f"*Status:* New",
+            thread_ts)
+        return
+
+    # New issue
+    category = classify_issue(clean)
+
+    if category == "Data Ad Hoc Request":
+        _pending_adhoc[key] = {"description": clean, "thread_ts": thread_ts}
+        post_reply(channel,
+            f":pencil: This looks like a *Data Ad Hoc Request*.\n"
+            f"Which team is requesting this? ({', '.join(AD_HOC_TEAMS)})",
+            thread_ts)
+        return
+
+    ticket_id = create_ticket(
+        submitted_by=get_display_name(user),
+        description=clean,
+        category=category,
+        sub_category=None,
+        slack_channel=channel,
+        thread_ts=thread_ts,
+    )
+    cat = CATEGORIES[category]
+    post_reply(channel,
+        f":white_check_mark: Ticket #{ticket_id} created.\n"
+        f"*Category:* {category}\n"
+        f"*Assigned to:* {cat['assignee']} ({cat['email']})\n"
+        f"*Status:* New",
+        thread_ts)
+
+
+# ── API ROUTES ─────────────────────────────────────────────────────────────────
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "chunks": len(_meta)}
+
+@app.get("/tickets")
+async def tickets_list():
+    return JSONResponse(get_tickets())
+
+@app.patch("/tickets/{ticket_id}/status")
+async def update_status(ticket_id: int, request: Request):
+    body   = await request.json()
+    status = body.get("status", "")
+    if status not in TICKET_STATUSES:
+        raise HTTPException(400, detail=f"Status must be one of: {TICKET_STATUSES}")
+    update_ticket_status(ticket_id, status)
+    return {"ok": True, "ticket_id": ticket_id, "status": status}
+
+@app.post("/slack/events")
+async def slack_events(request: Request, background_tasks: BackgroundTasks):
+    body_bytes = await request.body()
+    try:
+        body = json.loads(body_bytes)
+    except json.JSONDecodeError:
+        raise HTTPException(400, detail="Invalid JSON")
+
+    if body.get("type") == "url_verification":
+        return JSONResponse({"challenge": body["challenge"]})
+
+    if SLACK_SIGNING_SECRET:
+        if not verify_slack_signature(
+            body_bytes,
+            request.headers.get("X-Slack-Request-Timestamp", ""),
+            request.headers.get("X-Slack-Signature", ""),
+        ):
+            raise HTTPException(403, detail="Invalid signature")
+
+    event_id = body.get("event_id", "")
+    if event_id and is_duplicate(event_id):
+        return JSONResponse({"ok": True})
+
+    event = body.get("event", {})
+    if event.get("bot_id") or event.get("subtype") == "bot_message":
+        return JSONResponse({"ok": True})
+
+    if event.get("type") in ("message", "app_mention"):
+        background_tasks.add_task(
+            handle_message,
+            event.get("text", ""),
+            event.get("channel", ""),
+            event.get("user", "unknown"),
+            event.get("thread_ts") or event.get("ts"),
+        )
+
+    return JSONResponse({"ok": True})
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
